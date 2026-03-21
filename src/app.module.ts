@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { join } from 'path';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 import { ClassesModule } from './modules/classes/classes.module.js';
@@ -38,7 +39,7 @@ import { NotesModule } from './modules/notes/notes.module.js';
           username: url ? undefined : configService.get<string>('DB_USERNAME'),
           password: url ? undefined : configService.get<string>('DB_PASSWORD'),
           database: url ? undefined : configService.get<string>('DB_NAME'),
-          entities: [__dirname + '/**/*.entity{.ts,.js}'],
+          entities: [join(__dirname, '..', '**', '*.entity{.ts,.js}')],
           synchronize: true, // Only for development
           ssl: url ? { rejectUnauthorized: false } : false,
         };
