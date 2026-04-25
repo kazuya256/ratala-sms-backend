@@ -18,7 +18,16 @@ export class ClassesService {
     ) { }
 
     async findAll(): Promise<Class[]> {
-        return this.classRepository.find({ relations: ['sections', 'sections.classTeacher'] });
+        return this.classRepository.find({ relations: ['sections', 'sections.classTeacher', '_count'] } as any);
+    }
+
+    async findOne(id: string): Promise<Class> {
+        const cls = await this.classRepository.findOne({ 
+            where: { id } as any,
+            relations: ['sections', 'sections.classTeacher', 'students', 'students.user'] 
+        });
+        if (!cls) throw new NotFoundException('Class not found');
+        return cls;
     }
 
     async createClass(name: string): Promise<Class> {
@@ -31,6 +40,12 @@ export class ClassesService {
         if (!cls) throw new NotFoundException('Class not found');
         const section = this.sectionRepository.create({ name, roomNumber, class: cls });
         return this.sectionRepository.save(section);
+    }
+
+    async updateClass(id: string, name: string): Promise<Class> {
+        const cls = await this.findOne(id);
+        cls.name = name;
+        return this.classRepository.save(cls);
     }
 
     async assignClassTeacher(sectionId: string, teacherId: string): Promise<Section> {

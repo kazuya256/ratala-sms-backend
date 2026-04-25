@@ -1,6 +1,7 @@
 import { Entity, Column, OneToMany } from 'typeorm';
 import { AbstractEntity } from '../../../common/abstract.entity.js';
 import { Section } from './section.entity.js';
+import { Student } from '../../users/entities/student.entity.js';
 
 @Entity('classes')
 export class Class extends AbstractEntity {
@@ -9,4 +10,7 @@ export class Class extends AbstractEntity {
 
     @OneToMany(() => Section, (section) => section.class)
     sections: Section[];
+
+    @OneToMany(() => Student, (student) => student.class)
+    students: Student[];
 }

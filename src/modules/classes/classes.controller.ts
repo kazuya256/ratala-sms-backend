@@ -16,10 +16,22 @@ export class ClassesController {
         return this.classesService.findAll();
     }
 
+    @Get(':id')
+    @Roles(UserRole.ADMIN, UserRole.TEACHER)
+    async findOne(@Param('id') id: string) {
+        return this.classesService.findOne(id);
+    }
+
     @Post()
     @Roles(UserRole.ADMIN)
     async createClass(@Body('name') name: string) {
         return this.classesService.createClass(name);
+    }
+
+    @Put(':id')
+    @Roles(UserRole.ADMIN)
+    async updateClass(@Param('id') id: string, @Body('name') name: string) {
+        return this.classesService.updateClass(id, name);
     }
 
     @Post(':classId/sections')
