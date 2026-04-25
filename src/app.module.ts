@@ -20,6 +20,9 @@ import { ReportsModule } from './modules/reports/reports.module.js';
 import { CommunicationsModule } from './modules/communications/communications.module.js';
 import { HomeworkModule } from './modules/homework/homework.module.js';
 import { NotesModule } from './modules/notes/notes.module.js';
+import { AchievementsModule } from './modules/achievements/achievements.module.js';
+import { HolidaysModule } from './modules/holidays/holidays.module.js';
+import { TransportModule } from './modules/transport/transport.module.js';
 
 @Module({
   imports: [
@@ -65,6 +68,9 @@ import { NotesModule } from './modules/notes/notes.module.js';
     CommunicationsModule,
     HomeworkModule,
     NotesModule,
+    AchievementsModule,
+    HolidaysModule,
+    TransportModule,
   ],
   providers: [
     {
