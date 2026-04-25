@@ -17,8 +17,18 @@ export class ClassesService {
         private userRepository: Repository<User>,
     ) { }
 
-    async findAll(): Promise<Class[]> {
-        return this.classRepository.find({ relations: ['sections', 'sections.classTeacher', '_count'] } as any);
+    async findAll(): Promise<any[]> {
+        const classes = await this.classRepository.find({ 
+            relations: ['sections', 'sections.classTeacher', 'students'] 
+        });
+        
+        return classes.map(cls => ({
+            ...cls,
+            _count: {
+                students: cls.students?.length || 0,
+                subjects: 0 // Subjects can be fetched via timetable if needed
+            }
+        }));
     }
 
     async findOne(id: string): Promise<Class> {
