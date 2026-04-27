@@ -64,6 +64,15 @@ export class ExamsController {
         return this.examsService.enterMarks(examId, body.studentId, body.marksObtained, body.remarks, body.isAbsent);
     }
 
+    @Post(':id/bulk-marks')
+    @Roles(UserRole.ADMIN, UserRole.TEACHER)
+    bulkUploadMarks(
+        @Param('id') examId: string,
+        @Body() body: { marks: any[] }
+    ) {
+        return this.examsService.bulkUploadMarks(examId, body.marks);
+    }
+
     @Patch(':id')
     @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
     update(@Param('id') id: string, @Body() data: any) {

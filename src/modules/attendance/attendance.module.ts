@@ -8,7 +8,9 @@ import { NotificationsModule } from '../notifications/notifications.module.js';
 import { UsersModule } from '../users/users.module.js';
 import { Section } from '../classes/entities/section.entity.js';
 import { Student } from '../users/entities/student.entity.js';
+import { Class } from '../classes/entities/class.entity.js';
 import { SubjectAllocation } from '../subjects/entities/subject-allocation.entity.js';
+import { HolidaysModule } from '../holidays/holidays.module.js';
 
 @Module({
     imports: [
@@ -17,10 +19,12 @@ import { SubjectAllocation } from '../subjects/entities/subject-allocation.entit
             TeacherAttendance,
             Section,
             Student,
-            SubjectAllocation
+            SubjectAllocation,
+            Class
         ]),
         NotificationsModule,
-        UsersModule
+        UsersModule,
+        HolidaysModule
     ],
     controllers: [AttendanceController],
     providers: [AttendanceService],

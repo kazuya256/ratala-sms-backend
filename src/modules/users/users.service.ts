@@ -133,6 +133,12 @@ export class UsersService {
         return this.userRepository.manager.getRepository('Class').count();
     }
 
+    async findAllClasses(): Promise<any[]> {
+        return this.userRepository.manager.getRepository('Class').find({
+            order: { name: 'ASC' }
+        });
+    }
+
     async verifyUser(id: string): Promise<User> {
         const user = await this.findOne(id);
         if (!user) throw new NotFoundException('User not found');

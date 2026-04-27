@@ -95,4 +95,34 @@ export class AttendanceController {
     async getDetailedReport(@Query('date') date: string) {
         return this.attendanceService.getDetailedDailyReport(date);
     }
+
+    @Get('report/students')
+    @Roles(UserRole.ADMIN)
+    async getStudentReport(
+        @Query('classId') classId: string,
+        @Query('sectionId') sectionId?: string,
+        @Query('startDate') startDate?: string,
+        @Query('endDate') endDate?: string
+    ) {
+        return this.attendanceService.getStudentAttendanceReport(classId, sectionId, startDate, endDate);
+    }
+
+    @Get('report/teachers')
+    @Roles(UserRole.ADMIN)
+    async getTeachersReport(
+        @Query('startDate') startDate?: string,
+        @Query('endDate') endDate?: string
+    ) {
+        return this.attendanceService.getTeachersAttendanceReport(startDate, endDate);
+    }
+
+    @Get('report/individual/:userId')
+    @Roles(UserRole.ADMIN, UserRole.TEACHER)
+    async getIndividualReport(
+        @Param('userId') userId: string,
+        @Query('startDate') startDate?: string,
+        @Query('endDate') endDate?: string
+    ) {
+        return this.attendanceService.getIndividualDetailedReport(userId, startDate, endDate);
+    }
 }

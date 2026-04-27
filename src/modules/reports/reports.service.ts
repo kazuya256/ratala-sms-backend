@@ -91,11 +91,14 @@ export class ReportsService {
         sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
         const revenueTrends = await this.feesService.getRevenueInRange(sixMonthsAgo, new Date());
 
+        const totalClassesList = await this.usersService.findAllClasses();
+
         return {
             totalStudents,
             totalTeachers,
             totalParents,
             totalClasses,
+            totalClassesList,
             totalMessages,
             totalRevenue: recentPayments.reduce((acc, p) => acc + Number(p.amount), 0),
             recentPayments,

@@ -39,6 +39,15 @@ export class HolidaysService implements OnModuleInit {
     return await this.holidayRepository.save(holiday);
   }
 
+  async getHolidaysInRange(startDate: Date, endDate: Date): Promise<Holiday[]> {
+    const startStr = startDate.toISOString().split('T')[0];
+    const endStr = endDate.toISOString().split('T')[0];
+    
+    return await this.holidayRepository.createQueryBuilder('holiday')
+      .where('holiday.date BETWEEN :start AND :end', { start: startStr, end: endStr })
+      .getMany();
+  }
+
   async findAll(): Promise<Holiday[]> {
     return await this.holidayRepository.find({
       order: { date: 'ASC' },

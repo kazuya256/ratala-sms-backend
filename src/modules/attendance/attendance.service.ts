@@ -8,6 +8,8 @@ import { UsersService } from '../users/users.service.js';
 import { Section } from '../classes/entities/section.entity.js';
 import { Student } from '../users/entities/student.entity.js';
 import { SubjectAllocation } from '../subjects/entities/subject-allocation.entity.js';
+import { HolidaysService } from '../holidays/holidays.service.js';
+import { Class } from '../classes/entities/class.entity.js';
 
 @Injectable()
 export class AttendanceService {
@@ -22,8 +24,11 @@ export class AttendanceService {
         private readonly studentRepository: Repository<Student>,
         @InjectRepository(SubjectAllocation)
         private readonly allocationRepository: Repository<SubjectAllocation>,
+        @InjectRepository(Class)
+        private readonly classRepository: Repository<Class>,
         private readonly notificationsService: NotificationsService,
         private readonly usersService: UsersService,
+        private readonly holidaysService: HolidaysService,
     ) { }
 
     // Student Attendance
@@ -389,5 +394,176 @@ export class AttendanceService {
             date,
             percentage: counts.total > 0 ? (counts.present / counts.total) * 100 : 0
         })).sort((a, b) => a.date.localeCompare(b.date));
+    }
+
+    // --- NEW REPORTING METHODS ---
+
+    /**
+     * Calculates working days in a range, excluding Saturdays and Holidays
+     */
+    async getWorkingDaysInRange(startDate: Date, endDate: Date): Promise<Date[]> {
+        const holidays = await this.holidaysService.getHolidaysInRange(startDate, endDate);
+        const holidayDates = new Set(holidays.map(h => h.date));
+        
+        const workingDays: Date[] = [];
+        const current = new Date(startDate);
+        current.setHours(0, 0, 0, 0);
+        const end = new Date(endDate);
+        end.setHours(0, 0, 0, 0);
+
+        while (current <= end) {
+            const dayOfWeek = current.getDay();
+            const dateStr = current.toISOString().split('T')[0];
+
+            // 6 is Saturday in JS (0 is Sunday, 1 is Monday...)
+            // Nepal has Saturday as a weekend.
+            if (dayOfWeek !== 6 && !holidayDates.has(dateStr)) {
+                workingDays.push(new Date(current));
+            }
+            current.setDate(current.getDate() + 1);
+        }
+        return workingDays;
+    }
+
+    async getStudentAttendanceReport(classId: string, sectionId?: string, startDate?: string, endDate?: string) {
+        const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), 0, 1);
+        const end = endDate ? new Date(endDate) : new Date();
+        
+        const workingDays = await this.getWorkingDaysInRange(start, end);
+        const totalWorkingDays = workingDays.length;
+
+        // Get Section info (including Class Teacher)
+        let classTeacherName = "N/A";
+        if (sectionId) {
+            const section = await this.sectionRepository.findOne({
+                where: { id: sectionId },
+                relations: ['classTeacher']
+            });
+            if (section?.classTeacher) {
+                classTeacherName = section.classTeacher.username;
+            }
+        }
+
+        // Fetch students
+        const where: any = { class: { id: classId } };
+        if (sectionId) where.section = { id: sectionId };
+        
+        const students = await this.studentRepository.find({
+            where: where as any,
+            relations: ['user']
+        });
+
+        // Fetch all attendance for these students in range
+        const attendanceRecords = await this.studentAttendanceRepository.find({
+            where: {
+                class: { id: classId },
+                ...(sectionId ? { section: { id: sectionId } } : {}),
+                date: Between(start, end)
+            } as any,
+            relations: ['student']
+        });
+
+        const report = students.map(student => {
+            const studentRecords = attendanceRecords.filter(a => a.student.id === student.user.id);
+            const presentDays = studentRecords.filter(r => r.status === AttendanceStatus.PRESENT || r.status === AttendanceStatus.LATE).length;
+            const absentDays = studentRecords.filter(r => r.status === AttendanceStatus.ABSENT).length;
+            
+            return {
+                studentId: student.user.id,
+                studentName: student.user.username,
+                rollNumber: student.rollNumber,
+                presentDays,
+                absentDays,
+                totalWorkingDays,
+                attendancePercentage: totalWorkingDays > 0 ? Math.round((presentDays / totalWorkingDays) * 100) : 0
+            };
+        });
+
+        return {
+            classTeacherName,
+            totalWorkingDays,
+            startDate: start.toISOString().split('T')[0],
+            endDate: end.toISOString().split('T')[0],
+            students: report
+        };
+    }
+
+    async getTeachersAttendanceReport(startDate?: string, endDate?: string) {
+        const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), 0, 1);
+        const end = endDate ? new Date(endDate) : new Date();
+        
+        const workingDays = await this.getWorkingDaysInRange(start, end);
+        const totalWorkingDays = workingDays.length;
+
+        const teachers = await this.usersService.findAllByRole('TEACHER' as any);
+        
+        const attendanceRecords = await this.teacherAttendanceRepository.find({
+            where: {
+                date: Between(start, end)
+            } as any,
+            relations: ['teacher']
+        });
+
+        const report = teachers.map(teacher => {
+            const teacherRecords = attendanceRecords.filter(a => a.teacher.id === teacher.id);
+            const presentDays = teacherRecords.filter(r => r.status === 'PRESENT').length;
+            
+            return {
+                teacherId: teacher.id,
+                teacherName: teacher.username,
+                presentDays,
+                totalWorkingDays,
+                attendancePercentage: totalWorkingDays > 0 ? Math.round((presentDays / totalWorkingDays) * 100) : 0
+            };
+        });
+
+        return {
+            totalWorkingDays,
+            startDate: start.toISOString().split('T')[0],
+            endDate: end.toISOString().split('T')[0],
+            teachers: report
+        };
+    }
+
+    async getIndividualDetailedReport(userId: string, startDate?: string, endDate?: string) {
+        const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), 0, 1);
+        const end = endDate ? new Date(endDate) : new Date();
+
+        const user = await this.usersService.findOne(userId);
+        if (!user) throw new NotFoundException('User not found');
+
+        let records: any[] = [];
+        if (user.role === 'STUDENT') {
+            records = await this.studentAttendanceRepository.find({
+                where: { student: { id: userId }, date: Between(start, end) } as any,
+                order: { date: 'DESC' }
+            });
+        } else if (user.role === 'TEACHER') {
+            records = await this.teacherAttendanceRepository.find({
+                where: { teacher: { id: userId }, date: Between(start, end) } as any,
+                order: { date: 'DESC' }
+            });
+        }
+
+        const holidays = await this.holidaysService.getHolidaysInRange(start, end);
+        
+        return {
+            user: {
+                id: user.id,
+                username: user.username,
+                role: user.role
+            },
+            records: records.map(r => ({
+                date: r.date,
+                status: r.status,
+                remarks: r.remarks,
+                checkIn: r.checkIn,
+                checkOut: r.checkOut
+            })),
+            holidays: holidays.map(h => ({
+                date: h.date,
+                title: h.title
+            }))
+        };
     }
 }

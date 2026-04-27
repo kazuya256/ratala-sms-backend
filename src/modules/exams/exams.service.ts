@@ -113,11 +113,18 @@ export class ExamsService {
             .getMany();
 
         // Get existing marks for this student in this term
+        // We check both term and name fields for compatibility
         const marks = await this.markRepository.find({
-            where: { 
-                student: { id: studentId },
-                exam: { term: term, class: { id: classId } }
-            } as any,
+            where: [
+                { 
+                    student: { id: studentId },
+                    exam: { term: term, class: { id: classId } }
+                },
+                {
+                    student: { id: studentId },
+                    exam: { name: term, class: { id: classId } }
+                }
+            ] as any,
             relations: ['exam', 'exam.subject']
         });
 
@@ -147,11 +154,18 @@ export class ExamsService {
         for (const m of data.marks) {
             // Find or create exam for this subject, class, and term
             let exam = await this.examRepository.findOne({
-                where: { 
-                    subject: { id: m.subjectId },
-                    class: { id: data.classId },
-                    term: data.term
-                } as any
+                where: [
+                    { 
+                        subject: { id: m.subjectId },
+                        class: { id: data.classId },
+                        term: data.term
+                    },
+                    { 
+                        subject: { id: m.subjectId },
+                        class: { id: data.classId },
+                        name: data.term
+                    }
+                ] as any
             });
 
             if (!exam) {
@@ -181,6 +195,41 @@ export class ExamsService {
                 m.isAbsent
             );
             results.push(mark);
+        }
+        return results;
+    }
+
+    async bulkUploadMarks(examId: string, marksData: any[]) {
+        const results: Mark[] = [];
+        for (const data of marksData) {
+            // Identifier can be studentId, rollNumber, or username
+            let studentId = data.studentId;
+            
+            if (!studentId && data.rollNumber) {
+                const student = await this.sectionRepository.manager.getRepository('Student').findOne({
+                    where: { rollNumber: data.rollNumber } as any,
+                    relations: ['user']
+                });
+                if (student) studentId = student.user.id;
+            }
+
+            if (!studentId && data.username) {
+                const user = await this.sectionRepository.manager.getRepository('User').findOne({
+                    where: { username: data.username } as any
+                });
+                if (user) studentId = user.id;
+            }
+
+            if (studentId) {
+                const result = await this.enterMarks(
+                    examId, 
+                    studentId, 
+                    Number(data.marksObtained) || 0, 
+                    data.remarks, 
+                    !!data.isAbsent
+                );
+                results.push(result);
+            }
         }
         return results;
     }
