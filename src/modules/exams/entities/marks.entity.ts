@@ -5,7 +5,7 @@ import { User } from '../../users/entities/user.entity.js';
 
 @Entity('marks')
 export class Mark extends AbstractEntity {
-    @ManyToOne(() => Exam, (exam) => exam.marks)
+    @ManyToOne(() => Exam, (exam) => exam.marks, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'examId' })
     exam: Exam;
 

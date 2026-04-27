@@ -6,6 +6,7 @@ import { FeesModule } from '../fees/fees.module.js';
 import { AttendanceModule } from '../attendance/attendance.module.js';
 import { ExamsModule } from '../exams/exams.module.js';
 import { CommunicationsModule } from '../communications/communications.module.js';
+import { TimetableModule } from '../timetable/timetable.module.js';
 
 @Module({
     imports: [
@@ -13,7 +14,8 @@ import { CommunicationsModule } from '../communications/communications.module.js
         FeesModule,
         AttendanceModule,
         ExamsModule,
-        CommunicationsModule
+        CommunicationsModule,
+        TimetableModule
     ],
     controllers: [ReportsController],
     providers: [ReportsService],

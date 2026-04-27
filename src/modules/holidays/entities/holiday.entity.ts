@@ -14,6 +14,9 @@ export class Holiday {
   @Column({ type: 'date' })
   date: string; // Stored as YYYY-MM-DD
 
+  @Column({ type: 'varchar', default: 'holiday' })
+  type: 'holiday' | 'event';
+
   @Column({ default: false })
   isRecurring: boolean; // Not used for now but good to have
 

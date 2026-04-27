@@ -12,8 +12,18 @@ export class UsersController {
 
     @Get()
     @Roles(UserRole.ADMIN)
-    async findAll(@Query('role') role: UserRole) {
-        return this.usersService.findAllByRole(role);
+    async findAll(
+        @Query('role') role: UserRole,
+        @Query('classId') classId?: string,
+        @Query('sectionId') sectionId?: string
+    ) {
+        return this.usersService.findAllByRole(role, classId, sectionId);
+    }
+
+    @Get('search')
+    @Roles(UserRole.ADMIN)
+    async search(@Query('q') q: String, @Query('role') role: UserRole) {
+        return this.usersService.searchUsers(q as string, role);
     }
 
     @Get('my-children')
@@ -22,10 +32,10 @@ export class UsersController {
         return this.usersService.getMyChildren(req.user.id);
     }
 
-    @Get('search')
+    @Get(':id')
     @Roles(UserRole.ADMIN)
-    async search(@Query('q') q: String, @Query('role') role: UserRole) {
-        return this.usersService.searchUsers(q as string, role);
+    async findOne(@Param('id') id: string) {
+        return this.usersService.findOneStudentWithProfile(id);
     }
 
     @Patch(':id/verify')

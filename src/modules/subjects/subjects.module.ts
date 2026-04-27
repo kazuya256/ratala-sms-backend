@@ -6,6 +6,7 @@ import { SubjectsService } from './subjects.service.js';
 import { SubjectsController } from './subjects.controller.js';
 import { Teacher } from '../users/entities/teacher.entity.js';
 import { Section } from '../classes/entities/section.entity.js';
+import { Class } from '../classes/entities/class.entity.js';
 
 import { User } from '../users/entities/user.entity.js';
 
@@ -13,7 +14,7 @@ import { UsersModule } from '../users/users.module.js';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([Subject, SubjectAllocation, Teacher, Section, User]),
+        TypeOrmModule.forFeature([Subject, SubjectAllocation, Teacher, Section, User, Class]),
         UsersModule
     ],
     controllers: [SubjectsController],

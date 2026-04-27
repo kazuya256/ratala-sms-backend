@@ -10,15 +10,18 @@ export class Exam extends AbstractEntity {
     @Column()
     name: string;
 
-    @ManyToOne(() => Class)
+    @Column({ nullable: true })
+    term: string; // e.g., "1st Terminal", "2nd Terminal", etc.
+
+    @ManyToOne(() => Class, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'classId' })
     class: Class;
 
-    @ManyToOne(() => Section)
+    @ManyToOne(() => Section, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'sectionId' })
     section: Section;
 
-    @ManyToOne(() => Subject)
+    @ManyToOne(() => Subject, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'subjectId' })
     subject: Subject;
 

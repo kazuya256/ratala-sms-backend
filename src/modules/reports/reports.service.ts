@@ -4,6 +4,7 @@ import { FeesService } from '../fees/fees.service.js';
 import { AttendanceService } from '../attendance/attendance.service.js';
 import { ExamsService } from '../exams/exams.service.js';
 import { CommunicationsService } from '../communications/communications.service.js';
+import { TimetableService } from '../timetable/timetable.service.js';
 
 @Injectable()
 export class ReportsService {
@@ -13,6 +14,7 @@ export class ReportsService {
         private readonly attendanceService: AttendanceService,
         private readonly examsService: ExamsService,
         private readonly communicationsService: CommunicationsService,
+        private readonly timetableService: TimetableService,
     ) { }
 
     async getStudentAcademicReport(studentId: string) {
@@ -100,7 +102,30 @@ export class ReportsService {
             todayPresent,
             pendingFees,
             attendanceTrends,
-            revenueTrends
+            revenueTrends,
+            todaySchedule: await this.getTodaySchedule()
+        };
+    }
+
+    private async getTodaySchedule() {
+        const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+        const today = days[new Date().getDay()];
+        
+        // Fetch all timetable entries for today
+        const entries = await this.timetableService.findAllToday(today);
+        
+        return { 
+            day: today, 
+            entries: entries.map(e => ({
+                id: e.id,
+                subject: e.subject?.name,
+                teacher: e.teacher?.user?.username,
+                startTime: e.startTime,
+                endTime: e.endTime,
+                room: e.roomNumber,
+                className: e.class?.name,
+                sectionName: e.section?.name
+            }))
         };
     }
 
@@ -111,16 +136,22 @@ export class ReportsService {
         // Group by combined class and section
         const summaries: Record<string, { classSec: string, present: number, absent: number, total: number }> = {};
         
-        // We also need all sections to show zero attendance if no record exists
-        // But for simplicity, we'll aggregate what we have and maybe use all students to find missing ones.
-        // Actually, getClassAttendance(undefined, undefined, date) with no classId only returns existing records.
-        // Let's make it better by fetching all active sections first.
-        
         const records = allAttendance;
-        records.forEach(r => {
-            const key = `${r.classId}_${r.sectionId}`;
+        // The records from attendanceService already have 'student', 'student.class', 'student.section' relations loaded? 
+        // Let's check attendance.service.ts
+        
+        records.forEach((r: any) => {
+            const className = r.className;
+            const sectionName = r.sectionName;
+            const key = `${className}_${sectionName}`;
+            
             if (!summaries[key]) {
-                summaries[key] = { classSec: `${r.classId}-${r.sectionId}`, present: 0, absent: 0, total: 0 };
+                summaries[key] = { 
+                    classSec: `${className}${sectionName !== 'General' ? ' - ' + sectionName : ''}`, 
+                    present: 0, 
+                    absent: 0, 
+                    total: 0 
+                };
             }
             summaries[key].total++;
             if (r.status === 'PRESENT') summaries[key].present++;

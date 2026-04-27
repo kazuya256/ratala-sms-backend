@@ -19,14 +19,14 @@ export class ClassesService {
 
     async findAll(): Promise<any[]> {
         const classes = await this.classRepository.find({ 
-            relations: ['sections', 'sections.classTeacher', 'students'] 
+            relations: ['sections', 'sections.classTeacher', 'students', 'subjects'] 
         });
         
         return classes.map(cls => ({
             ...cls,
             _count: {
                 students: cls.students?.length || 0,
-                subjects: 0 // Subjects can be fetched via timetable if needed
+                subjects: cls.subjects?.length || 0
             }
         }));
     }
@@ -34,7 +34,7 @@ export class ClassesService {
     async findOne(id: string): Promise<Class> {
         const cls = await this.classRepository.findOne({ 
             where: { id } as any,
-            relations: ['sections', 'sections.classTeacher', 'students', 'students.user'] 
+            relations: ['sections', 'sections.classTeacher', 'students', 'students.user', 'subjects'] 
         });
         if (!cls) throw new NotFoundException('Class not found');
         return cls;

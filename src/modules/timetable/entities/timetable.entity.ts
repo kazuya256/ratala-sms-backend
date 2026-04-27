@@ -17,13 +17,13 @@ export enum DayOfWeek {
 
 @Entity('timetable')
 export class Timetable extends AbstractEntity {
-    @ManyToOne(() => Class)
+    @ManyToOne(() => Class, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'classId' })
     class: Class;
 
-    @ManyToOne(() => Section)
+    @ManyToOne(() => Section, { onDelete: 'CASCADE', nullable: true })
     @JoinColumn({ name: 'sectionId' })
-    section: Section;
+    section: Section | null;
 
     @ManyToOne(() => Subject)
     @JoinColumn({ name: 'subjectId' })
@@ -39,12 +39,12 @@ export class Timetable extends AbstractEntity {
     })
     dayOfWeek: DayOfWeek;
 
-    @Column()
+    @Column({ type: 'varchar' })
     startTime: string;
 
-    @Column()
+    @Column({ type: 'varchar' })
     endTime: string;
 
-    @Column({ nullable: true })
-    roomNumber: string;
+    @Column({ type: 'varchar', nullable: true })
+    roomNumber: string | null;
 }

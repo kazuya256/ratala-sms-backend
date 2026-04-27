@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Patch, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch, Delete, UseGuards, Query, Logger } from '@nestjs/common';
 import { ExamsService } from './exams.service.js';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
@@ -8,7 +8,28 @@ import { UserRole } from '../../common/constants/role.enum.js';
 @Controller('exams')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ExamsController {
-    constructor(private readonly examsService: ExamsService) { }
+    private readonly logger = new Logger(ExamsController.name);
+    constructor(private readonly examsService: ExamsService) { 
+        this.logger.log('ExamsController Initialized');
+    }
+
+    @Get('terminal/:studentId')
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.TEACHER)
+    async getTerminalResults(
+        @Param('studentId') studentId: string,
+        @Query('term') term: string,
+        @Query('classId') classId: string
+    ) {
+        this.logger.log(`[DEBUG] getTerminalResults hit for student: ${studentId}, term: ${term}, class: ${classId}`);
+        return this.examsService.getTerminalResults(studentId, term, classId);
+    }
+
+    @Post('terminal-marks')
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    saveTerminalMarks(@Body() data: any) {
+        this.logger.log(`Saving terminal marks for student ${data.studentId}, term ${data.term}`);
+        return this.examsService.saveTerminalMarks(data);
+    }
 
     @Post()
     @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
@@ -53,5 +74,11 @@ export class ExamsController {
     @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
     remove(@Param('id') id: string) {
         return this.examsService.deleteExam(id);
+    }
+
+    @Get('student/:studentId')
+    @Roles(UserRole.ADMIN, UserRole.TEACHER, UserRole.STUDENT, UserRole.PARENT)
+    async getStudentMarks(@Param('studentId') studentId: string) {
+        return this.examsService.getStudentMarks(studentId);
     }
 }

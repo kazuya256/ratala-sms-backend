@@ -10,15 +10,15 @@ export enum ComplainType {
 
 @Entity('complains')
 export class Complain extends AbstractEntity {
-    @ManyToOne(() => User)
+    @ManyToOne(() => User, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'senderId' })
     sender: User;
 
-    @ManyToOne(() => User)
+    @ManyToOne(() => User, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'recipientId' })
     recipient: User;
 
-    @ManyToOne(() => Student, { nullable: true })
+    @ManyToOne(() => Student, { nullable: true, onDelete: 'CASCADE' })
     @JoinColumn({ name: 'studentId' })
     student: Student;
 

@@ -56,4 +56,22 @@ export class SubjectsController {
     removeAllocation(@Param('id') id: string) {
         return this.subjectsService.removeAllocation(id);
     }
+
+    // Class-Subject Assignment
+    @Post(':id/assign-class/:classId')
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    assignToClass(@Param('id') subjectId: string, @Param('classId') classId: string) {
+        return this.subjectsService.assignToClass(subjectId, classId);
+    }
+
+    @Delete(':id/remove-class/:classId')
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    removeFromClass(@Param('id') subjectId: string, @Param('classId') classId: string) {
+        return this.subjectsService.removeFromClass(subjectId, classId);
+    }
+
+    @Get('class/:classId')
+    findByClass(@Param('classId') classId: string) {
+        return this.subjectsService.findByClass(classId);
+    }
 }

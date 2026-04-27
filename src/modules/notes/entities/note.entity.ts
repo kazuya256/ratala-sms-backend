@@ -22,15 +22,15 @@ export class Note extends AbstractEntity {
     @Column({ type: 'text', nullable: true })
     resourceType: string | null;
 
-    @ManyToOne(() => Class, { eager: true })
+    @ManyToOne(() => Class, { eager: true, onDelete: 'CASCADE' })
     class: Class;
 
-    @ManyToOne(() => Section, { nullable: true, eager: true })
+    @ManyToOne(() => Section, { nullable: true, eager: true, onDelete: 'CASCADE' })
     section: Section;
 
-    @ManyToOne(() => Subject, { eager: true })
+    @ManyToOne(() => Subject, { eager: true, onDelete: 'CASCADE' })
     subject: Subject;
 
-    @ManyToOne(() => User, { eager: true })
+    @ManyToOne(() => User, { eager: true, onDelete: 'CASCADE' })
     teacher: User;
 }

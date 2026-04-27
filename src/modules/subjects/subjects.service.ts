@@ -8,6 +8,7 @@ import { Section } from '../classes/entities/section.entity.js';
 import { User } from '../users/entities/user.entity.js';
 import { UserRole } from '../../common/constants/role.enum.js';
 import { UsersService } from '../users/users.service.js';
+import { Class } from '../classes/entities/class.entity.js';
 
 @Injectable()
 export class SubjectsService {
@@ -22,11 +23,13 @@ export class SubjectsService {
         private readonly sectionRepository: Repository<Section>,
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
+        @InjectRepository(Class)
+        private readonly classRepository: Repository<Class>,
         private readonly usersService: UsersService,
     ) { }
 
     async findAll(): Promise<Subject[]> {
-        return this.subjectRepository.find({ relations: ['teachers'] });
+        return this.subjectRepository.find({ relations: ['teachers', 'classes'] });
     }
 
     async create(data: Partial<Subject>): Promise<Subject> {
@@ -37,7 +40,7 @@ export class SubjectsService {
     async findOne(id: string): Promise<Subject> {
         const subject = await this.subjectRepository.findOne({
             where: { id } as any,
-            relations: ['teachers']
+            relations: ['teachers', 'classes']
         });
         if (!subject) throw new NotFoundException('Subject not found');
         return subject;
@@ -81,5 +84,45 @@ export class SubjectsService {
 
     async removeAllocation(id: string) {
         return this.allocationRepository.delete(id);
+    }
+
+    // Class-Subject Assignment
+    async assignToClass(subjectId: string, classId: string) {
+        const subject = await this.subjectRepository.findOne({ 
+            where: { id: subjectId } as any,
+            relations: ['classes']
+        });
+        const cls = await this.classRepository.findOne({ 
+            where: { id: classId } as any
+        });
+
+        if (!subject || !cls) throw new NotFoundException('Subject or Class not found');
+
+        if (!subject.classes) subject.classes = [];
+        if (!subject.classes.find(c => c.id === classId)) {
+            subject.classes.push(cls);
+            return this.subjectRepository.save(subject);
+        }
+        return subject;
+    }
+
+    async removeFromClass(subjectId: string, classId: string) {
+        const subject = await this.subjectRepository.findOne({ 
+            where: { id: subjectId } as any,
+            relations: ['classes']
+        });
+        if (!subject) throw new NotFoundException('Subject not found');
+
+        subject.classes = subject.classes?.filter(c => c.id !== classId) || [];
+        return this.subjectRepository.save(subject);
+    }
+
+    async findByClass(classId: string) {
+        const cls = await this.classRepository.findOne({
+            where: { id: classId } as any,
+            relations: ['subjects']
+        });
+        if (!cls) throw new NotFoundException('Class not found');
+        return cls.subjects;
     }
 }

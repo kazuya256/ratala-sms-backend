@@ -71,7 +71,7 @@ export class UsersService {
     async findOneStudentWithProfile(id: string): Promise<User | null> {
         return this.userRepository.findOne({
             where: { id } as any,
-            relations: ['studentProfile', 'studentProfile.class', 'studentProfile.section', 'parents'],
+            relations: ['studentProfile', 'studentProfile.class', 'studentProfile.section', 'parents', 'children'],
         });
     }
 
@@ -94,13 +94,22 @@ export class UsersService {
         }));
     }
 
-    async findAllByRole(role: UserRole): Promise<any[]> {
+    async findAllByRole(role: UserRole, classId?: string, sectionId?: string): Promise<any[]> {
         const relations: string[] = [];
         if (role === UserRole.PARENT) relations.push('children');
         if (role === UserRole.STUDENT) relations.push('studentProfile', 'studentProfile.class', 'studentProfile.section');
 
+        const where: any = { role };
+        if (role === UserRole.STUDENT) {
+            if (classId) where.studentProfile = { class: { id: classId } };
+            if (sectionId) {
+                where.studentProfile = where.studentProfile || {};
+                where.studentProfile.section = { id: sectionId };
+            }
+        }
+
         const users = await this.userRepository.find({
-            where: { role } as any,
+            where,
             relations,
         });
 
@@ -109,6 +118,8 @@ export class UsersService {
                 ...user,
                 className: user.studentProfile?.class?.name,
                 sectionName: user.studentProfile?.section?.name,
+                classId: user.studentProfile?.class?.id,
+                sectionId: user.studentProfile?.section?.id,
             }));
         }
         return users;
@@ -134,10 +145,17 @@ export class UsersService {
             where: { id: parentId } as any,
             relations: ['children'],
         });
-        const student = await this.findOne(studentId);
+        const student = await this.userRepository.findOne({
+            where: { id: studentId } as any,
+            relations: ['parents'],
+        });
 
         if (!parent || !student) {
             throw new NotFoundException('Parent or Student not found');
+        }
+
+        if (student.parents && student.parents.length > 0) {
+            throw new Error('This student is already linked to a parent. Please unlink the current parent first.');
         }
 
         if (parent.role !== UserRole.PARENT || student.role !== UserRole.STUDENT) {
@@ -227,25 +245,28 @@ export class UsersService {
         return users;
     }
 
-    async enrollStudent(studentId: string, classId: string, sectionId: string) {
+    async enrollStudent(studentId: string, classId: string, sectionId?: string) {
         const user = await this.userRepository.findOne({
             where: { id: studentId as any },
             relations: ['studentProfile']
         });
         if (!user || user.role !== UserRole.STUDENT) throw new NotFoundException('Student not found');
 
+        const classEntity = classId ? { id: classId } : null;
+        const sectionEntity = sectionId ? { id: sectionId } : null;
+
         if (!user.studentProfile) {
             // Create profile if missing
             const profile = this.studentRepository.create({
                 user: { id: user.id } as any,
-                class: { id: classId } as any,
-                section: { id: sectionId } as any,
+                class: classEntity as any,
+                section: sectionEntity as any,
             });
             await this.studentRepository.save(profile);
         } else {
             // Update existing
-            user.studentProfile.class = { id: classId } as any;
-            user.studentProfile.section = { id: sectionId } as any;
+            user.studentProfile.class = classEntity as any;
+            user.studentProfile.section = sectionEntity as any;
             await this.studentRepository.save(user.studentProfile);
         }
         return { message: 'Student enrolled successfully' };

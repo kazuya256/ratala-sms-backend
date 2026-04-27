@@ -12,6 +12,10 @@ export class CreateHolidayDto {
   @IsDateString()
   @IsNotEmpty()
   date: string;
+
+  @IsString()
+  @IsOptional()
+  type?: 'holiday' | 'event';
 }
 
 export class UpdateHolidayDto {
@@ -26,4 +30,8 @@ export class UpdateHolidayDto {
   @IsDateString()
   @IsOptional()
   date?: string;
+
+  @IsString()
+  @IsOptional()
+  type?: 'holiday' | 'event';
 }

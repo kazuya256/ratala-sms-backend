@@ -17,11 +17,11 @@ export class StudentAttendance extends AbstractEntity {
     @JoinColumn({ name: 'studentId' })
     student: User;
 
-    @ManyToOne(() => Class)
+    @ManyToOne(() => Class, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'classId' })
     class: Class;
 
-    @ManyToOne(() => Section)
+    @ManyToOne(() => Section, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'sectionId' })
     section: Section;
 

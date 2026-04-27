@@ -1,6 +1,7 @@
 import { Entity, Column, ManyToMany, JoinTable } from 'typeorm';
 import { AbstractEntity } from '../../../common/abstract.entity.js';
 import { Teacher } from '../../users/entities/teacher.entity.js';
+import { Class } from '../../classes/entities/class.entity.js';
 
 @Entity('subjects')
 export class Subject extends AbstractEntity {
@@ -20,4 +21,7 @@ export class Subject extends AbstractEntity {
         inverseJoinColumn: { name: 'teacherId', referencedColumnName: 'id' },
     })
     teachers: Teacher[];
+
+    @ManyToMany(() => Class, (cls) => cls.subjects)
+    classes: Class[];
 }

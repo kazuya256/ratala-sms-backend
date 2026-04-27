@@ -199,7 +199,7 @@ export class AttendanceService {
 
             const records = await this.studentAttendanceRepository.find({
                 where,
-                relations: ['student']
+                relations: ['student', 'class', 'section']
             });
 
             return records.map(record => ({
@@ -208,6 +208,8 @@ export class AttendanceService {
                 studentName: record.student.username,
                 classId: record.class?.id || classId || "",
                 sectionId: record.section?.id || sectionId || "",
+                className: record.class?.name || "Unknown",
+                sectionName: record.section?.name || "General",
                 date: typeof record.date === 'string' ? record.date : record.date.toISOString().split('T')[0],
                 status: record.status,
                 remarks: record.remarks

@@ -16,6 +16,12 @@ export class TimetableController {
         return this.timetableService.create(data);
     }
 
+    @Get('class/:classId')
+    @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.TEACHER)
+    getAllByClass(@Param('classId') classId: string) {
+        return this.timetableService.getAllByClass(classId);
+    }
+
     @Get('class/:classId/section/:sectionId')
     getByClass(@Param('classId') classId: string, @Param('sectionId') sectionId: string) {
         return this.timetableService.getTimetableByClassAndSection(classId, sectionId);

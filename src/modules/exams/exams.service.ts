@@ -104,4 +104,84 @@ export class ExamsService {
             relations: ['exam', 'exam.subject']
         });
     }
+
+    async getTerminalResults(studentId: string, term: string, classId: string) {
+        // Get all subjects assigned to this class
+        const subjects = await this.subjectRepository.createQueryBuilder('subject')
+            .innerJoin('subject.classes', 'class')
+            .where('class.id = :classId', { classId })
+            .getMany();
+
+        // Get existing marks for this student in this term
+        const marks = await this.markRepository.find({
+            where: { 
+                student: { id: studentId },
+                exam: { term: term, class: { id: classId } }
+            } as any,
+            relations: ['exam', 'exam.subject']
+        });
+
+        return subjects.map(subject => {
+            const mark = marks.find(m => m.exam.subject.id === subject.id);
+            return {
+                subjectId: subject.id,
+                subjectName: subject.name,
+                subjectCode: subject.code,
+                marksObtained: mark?.marksObtained ?? null,
+                maxMarks: mark?.exam.maxMarks ?? 100,
+                isAbsent: mark?.isAbsent ?? false,
+                remarks: mark?.remarks ?? '',
+                examId: mark?.exam.id ?? null,
+                markId: mark?.id ?? null
+            };
+        });
+    }
+
+    async saveTerminalMarks(data: { 
+        studentId: string, 
+        classId: string, 
+        term: string, 
+        marks: { subjectId: string, marksObtained: number, maxMarks?: number, isAbsent?: boolean, remarks?: string }[] 
+    }) {
+        const results: Mark[] = [];
+        for (const m of data.marks) {
+            // Find or create exam for this subject, class, and term
+            let exam = await this.examRepository.findOne({
+                where: { 
+                    subject: { id: m.subjectId },
+                    class: { id: data.classId },
+                    term: data.term
+                } as any
+            });
+
+            if (!exam) {
+                const subject = await this.subjectRepository.findOne({ where: { id: m.subjectId } as any });
+                exam = this.examRepository.create({
+                    name: `${data.term} - ${subject?.name || m.subjectId}`,
+                    term: data.term,
+                    class: { id: data.classId } as any,
+                    subject: { id: m.subjectId } as any,
+                    examDate: new Date(),
+                    startTime: '00:00',
+                    endTime: '00:00',
+                    maxMarks: m.maxMarks ?? 100
+                });
+                exam = await this.examRepository.save(exam);
+            } else if (m.maxMarks !== undefined) {
+                exam.maxMarks = m.maxMarks;
+                await this.examRepository.save(exam);
+            }
+
+            // Save mark
+            const mark = await this.enterMarks(
+                exam.id, 
+                data.studentId, 
+                m.marksObtained, 
+                m.remarks, 
+                m.isAbsent
+            );
+            results.push(mark);
+        }
+        return results;
+    }
 }
