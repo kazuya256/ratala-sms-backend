@@ -22,6 +22,9 @@ export class FeeStructure {
   @Column({ type: 'varchar', nullable: true })
   classId: string | null;
 
+  @Column({ type: 'varchar', nullable: true })
+  studentId: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 }

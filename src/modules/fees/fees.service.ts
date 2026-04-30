@@ -29,9 +29,10 @@ export class FeesService {
     amount: number,
     classId?: string,
     description?: string,
+    studentId?: string,
   ): Promise<FeeStructure> {
     // If creating for a class, check if it matches an existing universal template
-    if (classId && classId !== 'ALL' && classId !== 'UNIVERSAL') {
+    if (classId && classId !== 'ALL' && classId !== 'UNIVERSAL' && !studentId) {
       const universal = await this.feeStructureRepository.findOne({
         where: { name, classId: IsNull() },
       });
@@ -45,6 +46,7 @@ export class FeesService {
       amount,
       classId,
       description,
+      studentId,
     });
     return this.feeStructureRepository.save(structure);
   }
@@ -152,7 +154,7 @@ export class FeesService {
     await this.feeStructureRepository.remove(structure);
   }
 
-  async findAllStructures(classId?: string): Promise<any[]> {
+  async findAllStructures(classId?: string, studentId?: string): Promise<any[]> {
     const query = this.feeStructureRepository.createQueryBuilder('s');
 
     // Base selection for all cases
@@ -162,7 +164,16 @@ export class FeesService {
       's.amount as amount',
       's.description as description',
       's.classId as "classId"',
+      's.studentId as "studentId"',
     ]);
+
+    if (studentId) {
+      query.where('(s."studentId" = :studentId OR s."studentId" IS NULL)', {
+        studentId,
+      });
+    } else {
+      query.where('s."studentId" IS NULL');
+    }
 
     if (classId && classId !== 'ALL' && classId !== 'UNIVERSAL') {
       query
@@ -178,12 +189,12 @@ export class FeesService {
           'sf."dueDate" as "overrideDueDate"',
           'sf."totalInstallments" as "overrideInstallments"',
         ])
-        .where(
-          's."classId"::text = :classId OR s."classId" IS NULL OR s."classId" = \'\'',
+        .andWhere(
+          '(s."classId"::text = :classId OR s."classId" IS NULL OR s."classId" = \'\')',
           { classId },
         );
     } else if (classId === 'UNIVERSAL') {
-      query.where('s."classId" IS NULL OR s."classId" = \'\'');
+      query.andWhere('(s."classId" IS NULL OR s."classId" = \'\')');
     }
 
     const rawResults = await query.getRawMany();
@@ -472,12 +483,6 @@ export class FeesService {
       where: { id: studentFeeId, student: { id: studentId } } as any,
     });
     if (!fee) throw new NotFoundException('Student fee record not found');
-
-    if (Number(fee.paidAmount) > 0) {
-      throw new BadRequestException(
-        'Cannot deassign a fee that already has payments recorded',
-      );
-    }
 
     await this.studentFeeRepository.remove(fee);
     return { success: true, message: 'Student fee deassigned successfully' };

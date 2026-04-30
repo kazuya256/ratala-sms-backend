@@ -30,6 +30,7 @@ export class FeesController {
       data.amount,
       data.classId,
       data.description,
+      data.studentId,
     );
   }
 
@@ -46,8 +47,11 @@ export class FeesController {
   }
 
   @Get('structures')
-  async getStructures(@Query('classId') classId?: string) {
-    return this.feesService.findAllStructures(classId);
+  async getStructures(
+    @Query('classId') classId?: string,
+    @Query('studentId') studentId?: string,
+  ) {
+    return this.feesService.findAllStructures(classId, studentId);
   }
 
   @Post('assign')
