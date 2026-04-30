@@ -170,7 +170,7 @@ export class FeesService {
         .leftJoin(
           'students',
           'st',
-          'st."userId" = sf."studentId" AND st."classId" = :classId',
+          'st."userId" = sf."studentId" AND st."classId"::text = :classId',
           { classId },
         )
         .addSelect([
@@ -179,7 +179,7 @@ export class FeesService {
           'sf."totalInstallments" as "overrideInstallments"',
         ])
         .where(
-          's."classId" = :classId OR s."classId" IS NULL OR s."classId" = \'\'',
+          's."classId"::text = :classId OR s."classId" IS NULL OR s."classId" = \'\'',
           { classId },
         );
     } else if (classId === 'UNIVERSAL') {
@@ -225,7 +225,7 @@ export class FeesService {
   async assignFeeToStudent(
     studentId: string,
     structureId: string,
-    dueDate: Date,
+    dueDate: Date | null,
     installments = 1,
   ): Promise<StudentFee> {
     const structure = await this.feeStructureRepository.findOneBy({
@@ -248,7 +248,7 @@ export class FeesService {
   async bulkAssignFeeToClasses(
     classIds: string[],
     structureId: string,
-    dueDate: Date,
+    dueDate: Date | null,
     installments: number,
     amount?: number,
   ): Promise<void> {
@@ -409,6 +409,78 @@ export class FeesService {
       where: { student: { id: studentId } } as any,
       relations: ['feeStructure'],
     });
+  }
+
+  async updateStudentFeeBill(
+    studentId: string,
+    studentFeeId: string,
+    data: {
+      totalAmount?: number;
+      paidAmount?: number;
+      remainingAmount?: number;
+      dueDate?: string | Date;
+      status?: string;
+    },
+  ): Promise<StudentFee> {
+    const fee = await this.studentFeeRepository.findOne({
+      where: { id: studentFeeId, student: { id: studentId } } as any,
+      relations: ['feeStructure'],
+    });
+    if (!fee) throw new NotFoundException('Student fee record not found');
+
+    const totalAmount =
+      data.totalAmount !== undefined ? Number(data.totalAmount) : Number(fee.totalAmount);
+    const paidAmount =
+      data.paidAmount !== undefined ? Number(data.paidAmount) : Number(fee.paidAmount);
+
+    if (totalAmount < 0 || paidAmount < 0) {
+      throw new BadRequestException('Amounts cannot be negative');
+    }
+    if (paidAmount > totalAmount) {
+      throw new BadRequestException('Paid amount cannot exceed total amount');
+    }
+
+    const remainingAmount =
+      data.remainingAmount !== undefined
+        ? Number(data.remainingAmount)
+        : Number(totalAmount) - Number(paidAmount);
+
+    fee.totalAmount = totalAmount;
+    fee.paidAmount = paidAmount;
+    fee.remainingAmount = Math.max(remainingAmount, 0);
+    fee.status =
+      fee.remainingAmount <= 0 ? 'PAID' : fee.paidAmount > 0 ? 'PARTIAL' : 'UNPAID';
+
+    const installmentAmount = fee.totalInstallments
+      ? Number(fee.totalAmount) / Number(fee.totalInstallments)
+      : Number(fee.totalAmount);
+    fee.paidInstallments =
+      installmentAmount > 0 ? Math.floor(Number(fee.paidAmount) / installmentAmount) : 0;
+
+    if (data.dueDate !== undefined) {
+      fee.dueDate = data.dueDate ? new Date(data.dueDate) : null;
+    }
+
+    return this.studentFeeRepository.save(fee);
+  }
+
+  async deassignStudentFee(
+    studentId: string,
+    studentFeeId: string,
+  ): Promise<{ success: boolean; message: string }> {
+    const fee = await this.studentFeeRepository.findOne({
+      where: { id: studentFeeId, student: { id: studentId } } as any,
+    });
+    if (!fee) throw new NotFoundException('Student fee record not found');
+
+    if (Number(fee.paidAmount) > 0) {
+      throw new BadRequestException(
+        'Cannot deassign a fee that already has payments recorded',
+      );
+    }
+
+    await this.studentFeeRepository.remove(fee);
+    return { success: true, message: 'Student fee deassigned successfully' };
   }
 
   // Payments

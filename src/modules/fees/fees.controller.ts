@@ -53,10 +53,13 @@ export class FeesController {
   @Post('assign')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.ACCOUNTANT)
   async assignFee(@Body() data: any) {
+    const dueDate = data.dueDate ? new Date(data.dueDate) : null;
+    const finalDueDate = dueDate && !isNaN(dueDate.getTime()) ? dueDate : null;
+
     return this.feesService.assignFeeToStudent(
       data.studentId,
       data.structureId,
-      new Date(data.dueDate),
+      finalDueDate,
       data.installments,
     );
   }
@@ -95,6 +98,47 @@ export class FeesController {
   @Get('student/:studentId')
   async getStudentFees(@Param('studentId') studentId: string) {
     return this.feesService.getStudentFees(studentId);
+  }
+
+  @Patch('student/:studentId/bill/:studentFeeId')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.ACCOUNTANT)
+  async updateStudentBill(
+    @Param('studentId') studentId: string,
+    @Param('studentFeeId') studentFeeId: string,
+    @Body() data: any,
+  ) {
+    return this.feesService.updateStudentFeeBill(studentId, studentFeeId, data);
+  }
+
+  @Patch('student/:studentId/bill')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.ACCOUNTANT)
+  async updateStudentBillByBody(
+    @Param('studentId') studentId: string,
+    @Body() data: any,
+  ) {
+    return this.feesService.updateStudentFeeBill(
+      studentId,
+      data.studentFeeId,
+      data,
+    );
+  }
+
+  @Delete('student/:studentId/bill/:studentFeeId')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.ACCOUNTANT)
+  async deleteStudentBill(
+    @Param('studentId') studentId: string,
+    @Param('studentFeeId') studentFeeId: string,
+  ) {
+    return this.feesService.deassignStudentFee(studentId, studentFeeId);
+  }
+
+  @Post('student/:studentId/deassign')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.ACCOUNTANT)
+  async deassignStudentBill(
+    @Param('studentId') studentId: string,
+    @Body('studentFeeId') studentFeeId: string,
+  ) {
+    return this.feesService.deassignStudentFee(studentId, studentFeeId);
   }
 
   @Post('collect')
