@@ -9,15 +9,15 @@ import { CommunicationsModule } from '../communications/communications.module.js
 import { TimetableModule } from '../timetable/timetable.module.js';
 
 @Module({
-    imports: [
-        UsersModule,
-        FeesModule,
-        AttendanceModule,
-        ExamsModule,
-        CommunicationsModule,
-        TimetableModule
-    ],
-    controllers: [ReportsController],
-    providers: [ReportsService],
+  imports: [
+    UsersModule,
+    FeesModule,
+    AttendanceModule,
+    ExamsModule,
+    CommunicationsModule,
+    TimetableModule,
+  ],
+  controllers: [ReportsController],
+  providers: [ReportsService],
 })
-export class ReportsModule { }
+export class ReportsModule {}

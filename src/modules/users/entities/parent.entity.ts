@@ -4,19 +4,19 @@ import { User } from './user.entity.js';
 
 @Entity('parents')
 export class Parent extends AbstractEntity {
-    @Column()
-    name: string;
+  @Column()
+  name: string;
 
-    @Column()
-    phoneNumber: string;
+  @Column()
+  phoneNumber: string;
 
-    @Column()
-    email: string;
+  @Column()
+  email: string;
 
-    @Column()
-    address: string;
+  @Column()
+  address: string;
 
-    @OneToOne(() => User, { onDelete: 'CASCADE' })
-    @JoinColumn()
-    user: User;
+  @OneToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn()
+  user: User;
 }

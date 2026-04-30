@@ -11,12 +11,12 @@ import { Subject } from '../subjects/entities/subject.entity.js';
 import { UsersModule } from '../users/users.module.js';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([Timetable, Teacher, Class, Section, Subject]),
-        UsersModule,
-    ],
-    controllers: [TimetableController],
-    providers: [TimetableService],
-    exports: [TimetableService],
+  imports: [
+    TypeOrmModule.forFeature([Timetable, Teacher, Class, Section, Subject]),
+    UsersModule,
+  ],
+  controllers: [TimetableController],
+  providers: [TimetableService],
+  exports: [TimetableService],
 })
-export class TimetableModule { }
+export class TimetableModule {}

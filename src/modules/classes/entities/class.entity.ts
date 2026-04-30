@@ -5,20 +5,20 @@ import { Student } from '../../users/entities/student.entity.js';
 
 @Entity('classes')
 export class Class extends AbstractEntity {
-    @Column({ unique: true })
-    name: string; // e.g., "Grade 10"
+  @Column({ unique: true })
+  name: string; // e.g., "Grade 10"
 
-    @OneToMany(() => Section, (section) => section.class)
-    sections: Section[];
+  @OneToMany(() => Section, (section) => section.class)
+  sections: Section[];
 
-    @OneToMany(() => Student, (student) => student.class)
-    students: Student[];
+  @OneToMany(() => Student, (student) => student.class)
+  students: Student[];
 
-    @ManyToMany('Subject', 'classes')
-    @JoinTable({
-        name: 'class_subjects',
-        joinColumn: { name: 'classId', referencedColumnName: 'id' },
-        inverseJoinColumn: { name: 'subjectId', referencedColumnName: 'id' },
-    })
-    subjects: any[];
+  @ManyToMany('Subject', 'classes')
+  @JoinTable({
+    name: 'class_subjects',
+    joinColumn: { name: 'classId', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'subjectId', referencedColumnName: 'id' },
+  })
+  subjects: any[];
 }

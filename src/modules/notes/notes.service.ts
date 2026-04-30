@@ -10,9 +10,17 @@ export class NotesService {
     @InjectRepository(Note)
     private readonly noteRepo: Repository<Note>,
     private readonly cloudinaryService: CloudinaryService,
-  ) { }
+  ) {}
 
-  async create(title: string, description: string, classId: string, sectionId: string | null, subjectId: string, teacher: any, file?: Express.Multer.File) {
+  async create(
+    title: string,
+    description: string,
+    classId: string,
+    sectionId: string | null,
+    subjectId: string,
+    teacher: any,
+    file?: Express.Multer.File,
+  ) {
     let fileUrl = null;
     let publicId = null;
     let resourceType = null;
@@ -28,7 +36,7 @@ export class NotesService {
     note.title = title;
     note.description = description;
     note.class = { id: classId } as any;
-    note.section = sectionId ? { id: sectionId } as any : null;
+    note.section = sectionId ? ({ id: sectionId } as any) : null;
     note.subject = { id: subjectId } as any;
     note.teacher = teacher;
     note.fileUrl = fileUrl;
@@ -46,27 +54,27 @@ export class NotesService {
     const where: any = sectionId
       ? [
           { class: { id: classId }, section: IsNull() },
-          { class: { id: classId }, section: { id: sectionId } }
+          { class: { id: classId }, section: { id: sectionId } },
         ]
       : { class: { id: classId } };
 
     return await this.noteRepo.find({
       where,
-      order: { createdAt: 'DESC' }
+      order: { createdAt: 'DESC' },
     });
   }
 
   async findBySection(sectionId: string) {
-      return await this.noteRepo.find({
-          where: { section: { id: sectionId } },
-          order: { createdAt: 'DESC' }
-      });
+    return await this.noteRepo.find({
+      where: { section: { id: sectionId } },
+      order: { createdAt: 'DESC' },
+    });
   }
 
   async findByTeacher(teacherId: string) {
     return await this.noteRepo.find({
       where: { teacher: { id: teacherId } },
-      order: { createdAt: 'DESC' }
+      order: { createdAt: 'DESC' },
     });
   }
 
@@ -74,14 +82,22 @@ export class NotesService {
     return await this.noteRepo.findOneBy({ id });
   }
 
-  async update(id: string, title?: string, description?: string, classId?: string, sectionId?: string | null, subjectId?: string) {
+  async update(
+    id: string,
+    title?: string,
+    description?: string,
+    classId?: string,
+    sectionId?: string | null,
+    subjectId?: string,
+  ) {
     const note = await this.noteRepo.findOneBy({ id });
     if (!note) return null;
 
     if (title) note.title = title;
     if (description) note.description = description;
     if (classId) note.class = { id: classId } as any;
-    if (sectionId !== undefined) note.section = sectionId ? { id: sectionId } as any : null;
+    if (sectionId !== undefined)
+      note.section = sectionId ? ({ id: sectionId } as any) : null;
     if (subjectId) note.subject = { id: subjectId } as any;
 
     return await this.noteRepo.save(note);

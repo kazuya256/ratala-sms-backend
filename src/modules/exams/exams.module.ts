@@ -9,9 +9,9 @@ import { Section } from '../classes/entities/section.entity.js';
 import { Subject } from '../subjects/entities/subject.entity.js';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Exam, Mark, Class, Section, Subject])],
-    controllers: [ExamsController],
-    providers: [ExamsService],
-    exports: [ExamsService],
+  imports: [TypeOrmModule.forFeature([Exam, Mark, Class, Section, Subject])],
+  controllers: [ExamsController],
+  providers: [ExamsService],
+  exports: [ExamsService],
 })
-export class ExamsModule { }
+export class ExamsModule {}

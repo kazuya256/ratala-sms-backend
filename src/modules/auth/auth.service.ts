@@ -1,4 +1,9 @@
-import { Injectable, ConflictException, UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  UnauthorizedException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { UsersService } from '../users/users.service.js';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -14,7 +19,7 @@ export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
-  ) { }
+  ) {}
 
   async validateUser(username: string, pass: string): Promise<any> {
     const user = await this.usersService.findOneByUsername(username);
@@ -22,14 +27,23 @@ export class AuthService {
     if (!user) return null;
 
     if (user.lockUntil && new Date() < new Date(user.lockUntil)) {
-      throw new UnauthorizedException('Account is temporarily locked. Try again later.');
+      throw new UnauthorizedException(
+        'Account is temporarily locked. Try again later.',
+      );
     }
 
     if (await bcrypt.compare(pass, user.password)) {
       if (user.loginAttempts > 0) {
         await this.usersService.resetLoginAttempts(user.id);
       }
-      const { password, refreshToken, refreshExpires, loginAttempts, lockUntil, ...result } = user;
+      const {
+        password,
+        refreshToken,
+        refreshExpires,
+        loginAttempts,
+        lockUntil,
+        ...result
+      } = user;
       return result;
     }
 
@@ -37,7 +51,12 @@ export class AuthService {
     return null;
   }
 
-  async register(username: string, pass: string, role?: string, studentId?: string) {
+  async register(
+    username: string,
+    pass: string,
+    role?: string,
+    studentId?: string,
+  ) {
     const existingUser = await this.usersService.findOneByUsername(username);
     if (existingUser) {
       throw new ConflictException('Username already exists');
@@ -47,7 +66,7 @@ export class AuthService {
       username,
       password: pass,
       role: role as any,
-      isVerified: role === 'ADMIN',
+      isVerified: role === 'ADMIN' || role === 'ACCOUNTANT',
     });
 
     if (role === 'PARENT' && studentId) {
@@ -56,7 +75,8 @@ export class AuthService {
 
     const { password, refreshToken, refreshExpires, ...result } = newUser;
     return {
-      message: 'User registered successfully. Please wait for admin verification.',
+      message:
+        'User registered successfully. Please wait for admin verification.',
       user: result,
     };
   }
@@ -86,14 +106,22 @@ export class AuthService {
       tokenVersion: user.tokenVersion || 0,
     };
 
-    const accessToken = this.jwtService.sign(payload, { expiresIn: accessTokenExpiresIn });
+    const accessToken = this.jwtService.sign(payload, {
+      expiresIn: accessTokenExpiresIn,
+    });
 
     // Generate refresh token (valid for 7 days longer than access token or fixed 30 days)
     const refreshToken = crypto.randomBytes(64).toString('hex');
-    const refreshTokenExpiresIn = rememberMe ? 60 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000; // 60 days or 7 days
+    const refreshTokenExpiresIn = rememberMe
+      ? 60 * 24 * 60 * 60 * 1000
+      : 7 * 24 * 60 * 60 * 1000; // 60 days or 7 days
     const expiresAt = new Date(Date.now() + refreshTokenExpiresIn);
 
-    await this.usersService.updateRefreshToken(user.id || user.userId, refreshToken, expiresAt);
+    await this.usersService.updateRefreshToken(
+      user.id || user.userId,
+      refreshToken,
+      expiresAt,
+    );
 
     return {
       access_token: accessToken,
@@ -114,7 +142,10 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token expired');
     }
 
-    const refreshTokenMatches = await bcrypt.compare(refreshToken, user.refreshToken);
+    const refreshTokenMatches = await bcrypt.compare(
+      refreshToken,
+      user.refreshToken,
+    );
     if (!refreshTokenMatches) {
       throw new ForbiddenException('Access Denied');
     }

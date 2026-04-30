@@ -1,25 +1,31 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 @Entity('achievements')
 export class Achievement {
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-    @Column()
-    title: string;
+  @Column()
+  title: string;
 
-    @Column('text')
-    description: string;
+  @Column('text')
+  description: string;
 
-    @Column({ type: 'varchar', nullable: true })
-    imageUrl: string | null;
+  @Column({ type: 'varchar', nullable: true })
+  imageUrl: string | null;
 
-    @Column({ type: 'varchar', nullable: true })
-    dateEarned: string | null; // Storing as string or Date
+  @Column({ type: 'varchar', nullable: true })
+  dateEarned: string | null; // Storing as string or Date
 
-    @CreateDateColumn()
-    createdAt: Date;
+  @CreateDateColumn()
+  createdAt: Date;
 
-    @UpdateDateColumn()
-    updatedAt: Date;
+  @UpdateDateColumn()
+  updatedAt: Date;
 }

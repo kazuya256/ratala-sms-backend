@@ -6,10 +6,7 @@ import { Achievement } from './entities/achievement.entity.js';
 import { CloudinaryModule } from '../cloudinary/cloudinary.module.js';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Achievement]),
-    CloudinaryModule,
-  ],
+  imports: [TypeOrmModule.forFeature([Achievement]), CloudinaryModule],
   controllers: [AchievementsController],
   providers: [AchievementsService],
   exports: [AchievementsService],

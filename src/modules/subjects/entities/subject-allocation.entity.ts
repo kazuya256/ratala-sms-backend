@@ -6,12 +6,12 @@ import { Section } from '../../classes/entities/section.entity.js';
 
 @Entity('subject_allocations')
 export class SubjectAllocation extends AbstractEntity {
-    @ManyToOne(() => Teacher, { onDelete: 'CASCADE' })
-    teacher: Teacher;
+  @ManyToOne(() => Teacher, { onDelete: 'CASCADE' })
+  teacher: Teacher;
 
-    @ManyToOne(() => Subject)
-    subject: Subject;
+  @ManyToOne(() => Subject)
+  subject: Subject;
 
-    @ManyToOne(() => Section)
-    section: Section;
+  @ManyToOne(() => Section)
+  section: Section;
 }

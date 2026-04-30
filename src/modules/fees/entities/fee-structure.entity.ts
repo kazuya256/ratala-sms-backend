@@ -1,22 +1,27 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+} from 'typeorm';
 
 @Entity('fee_structures')
 export class FeeStructure {
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-    @Column()
-    name: string; // e.g., 'Monthly Tuition'
+  @Column()
+  name: string; // e.g., 'Monthly Tuition'
 
-    @Column('decimal', { precision: 10, scale: 2 })
-    amount: number;
+  @Column('decimal', { precision: 10, scale: 2 })
+  amount: number;
 
-    @Column({ nullable: true })
-    description: string;
+  @Column({ type: 'text', nullable: true })
+  description: string | null;
 
-    @Column({ nullable: true })
-    classId: string;
+  @Column({ type: 'varchar', nullable: true })
+  classId: string | null;
 
-    @CreateDateColumn()
-    createdAt: Date;
+  @CreateDateColumn()
+  createdAt: Date;
 }

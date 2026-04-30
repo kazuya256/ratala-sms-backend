@@ -1,4 +1,18 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Req, UseInterceptors, UploadedFile, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Req,
+  UseInterceptors,
+  UploadedFile,
+  Res,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { HomeworkService } from './homework.service.js';
@@ -14,8 +28,8 @@ import axios from 'axios';
 export class HomeworkController {
   constructor(
     private readonly homeworkService: HomeworkService,
-    private readonly cloudinaryService: CloudinaryService
-  ) { }
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
 
   @Get(':id/download')
   @Roles(UserRole.STUDENT, UserRole.TEACHER, UserRole.ADMIN, UserRole.PARENT)
@@ -33,19 +47,22 @@ export class HomeworkController {
         if (uploadIndex !== -1) {
           const pathParts = parts.slice(uploadIndex + 2);
           const fullName = pathParts.join('/');
-          homework.publicId = fullName.substring(0, fullName.lastIndexOf('.')) || fullName;
+          homework.publicId =
+            fullName.substring(0, fullName.lastIndexOf('.')) || fullName;
           homework.resourceType = parts.includes('raw') ? 'raw' : 'image';
         }
-      } catch (e) { /* ignore extraction errors, fallback to fileUrl */ }
+      } catch (e) {
+        /* ignore extraction errors, fallback to fileUrl */
+      }
     }
 
     try {
       // Use high-reliability authenticated URLs for private folder access
-      const imgUrl = (homework.publicId) 
+      const imgUrl = homework.publicId
         ? this.cloudinaryService.getDownloadUrl(homework.publicId, 'image')
         : homework.fileUrl;
 
-      const rawUrl = (homework.publicId) 
+      const rawUrl = homework.publicId
         ? this.cloudinaryService.getDownloadUrl(homework.publicId, 'raw')
         : homework.fileUrl;
 
@@ -53,13 +70,19 @@ export class HomeworkController {
         // Try image resource type first (standard for most PDFs in Cloudinary)
         const response = await axios.get(imgUrl, { responseType: 'stream' });
         res.setHeader('Content-Type', response.headers['content-type']);
-        res.setHeader('Content-Disposition', `attachment; filename="${homework.title}.pdf"`);
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename="${homework.title}.pdf"`,
+        );
         return response.data.pipe(res);
       } catch {
         // Fallback to raw resource type if image fetch fails
         const response = await axios.get(rawUrl, { responseType: 'stream' });
         res.setHeader('Content-Type', response.headers['content-type']);
-        res.setHeader('Content-Disposition', `attachment; filename="${homework.title}.pdf"`);
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename="${homework.title}.pdf"`,
+        );
         return response.data.pipe(res);
       }
     } catch (error) {
@@ -87,7 +110,7 @@ export class HomeworkController {
       subjectId: hw.subject?.id,
       subjectName: hw.subject?.name,
       teacherName: hw.teacher?.fullName || hw.teacher?.username,
-      createdAt: hw.createdAt
+      createdAt: hw.createdAt,
     };
   }
 
@@ -104,27 +127,39 @@ export class HomeworkController {
     @Req() req: any,
     @UploadedFile() file?: Express.Multer.File,
   ) {
-    const res = await this.homeworkService.create(title, description, new Date(dueDate), classId, sectionId, subjectId, req.user, file);
+    const res = await this.homeworkService.create(
+      title,
+      description,
+      new Date(dueDate),
+      classId,
+      sectionId,
+      subjectId,
+      req.user,
+      file,
+    );
     return this.mapToDto(res);
   }
 
   @Get('class/:classId')
-  async findByClass(@Param('classId') classId: string, @Query('sectionId') sectionId?: string) {
+  async findByClass(
+    @Param('classId') classId: string,
+    @Query('sectionId') sectionId?: string,
+  ) {
     const res = await this.homeworkService.findByClass(classId, sectionId);
-    return res.map(hw => this.mapToDto(hw));
+    return res.map((hw) => this.mapToDto(hw));
   }
 
   @Get('section/:sectionId')
   async findBySection(@Param('sectionId') sectionId: string) {
     const res = await this.homeworkService.findBySection(sectionId);
-    return res.map(hw => this.mapToDto(hw));
+    return res.map((hw) => this.mapToDto(hw));
   }
 
   @Get('teacher')
   @Roles(UserRole.TEACHER)
   async findByTeacher(@Req() req: any) {
     const res = await this.homeworkService.findByTeacher(req.user.id);
-    return res.map(hw => this.mapToDto(hw));
+    return res.map((hw) => this.mapToDto(hw));
   }
 
   @Patch(':id')
@@ -138,7 +173,15 @@ export class HomeworkController {
     @Body('sectionId') sectionId?: string | null,
     @Body('subjectId') subjectId?: string,
   ) {
-    const res = await this.homeworkService.update(id, title, description, dueDate ? new Date(dueDate) : undefined, classId, sectionId, subjectId);
+    const res = await this.homeworkService.update(
+      id,
+      title,
+      description,
+      dueDate ? new Date(dueDate) : undefined,
+      classId,
+      sectionId,
+      subjectId,
+    );
     return this.mapToDto(res);
   }
 }

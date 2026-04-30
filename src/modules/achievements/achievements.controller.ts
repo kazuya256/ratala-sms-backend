@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, UseInterceptors, UploadedFile, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Put,
+  Delete,
+  UseInterceptors,
+  UploadedFile,
+  UseGuards,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AchievementsService } from './achievements.service.js';
 import { CreateAchievementDto } from './dto/create-achievement.dto.js';

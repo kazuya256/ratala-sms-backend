@@ -6,12 +6,9 @@ import { NotesController } from './notes.controller.js';
 import { CloudinaryModule } from '../cloudinary/cloudinary.module.js';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Note]),
-    CloudinaryModule
-  ],
+  imports: [TypeOrmModule.forFeature([Note]), CloudinaryModule],
   providers: [NotesService],
   controllers: [NotesController],
-  exports: [NotesService]
+  exports: [NotesService],
 })
 export class NotesModule {}

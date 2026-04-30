@@ -7,9 +7,9 @@ import { ClassesController } from './classes.controller.js';
 import { User } from '../users/entities/user.entity.js';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Class, Section, User])],
-    providers: [ClassesService],
-    controllers: [ClassesController],
-    exports: [ClassesService],
+  imports: [TypeOrmModule.forFeature([Class, Section, User])],
+  providers: [ClassesService],
+  controllers: [ClassesController],
+  exports: [ClassesService],
 })
-export class ClassesModule { }
+export class ClassesModule {}

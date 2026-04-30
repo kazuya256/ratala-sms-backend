@@ -87,5 +87,5 @@ import { TransportModule } from './modules/transport/transport.module.js';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}
 // Triggering reload...

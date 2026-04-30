@@ -1,7 +1,14 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
-import { StudentAttendance, AttendanceStatus } from './entities/student-attendance.entity.js';
+import {
+  StudentAttendance,
+  AttendanceStatus,
+} from './entities/student-attendance.entity.js';
 import { TeacherAttendance } from './entities/teacher-attendance.entity.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { UsersService } from '../users/users.service.js';
@@ -13,557 +20,643 @@ import { Class } from '../classes/entities/class.entity.js';
 
 @Injectable()
 export class AttendanceService {
-    constructor(
-        @InjectRepository(StudentAttendance)
-        private readonly studentAttendanceRepository: Repository<StudentAttendance>,
-        @InjectRepository(TeacherAttendance)
-        private readonly teacherAttendanceRepository: Repository<TeacherAttendance>,
-        @InjectRepository(Section)
-        private readonly sectionRepository: Repository<Section>,
-        @InjectRepository(Student)
-        private readonly studentRepository: Repository<Student>,
-        @InjectRepository(SubjectAllocation)
-        private readonly allocationRepository: Repository<SubjectAllocation>,
-        @InjectRepository(Class)
-        private readonly classRepository: Repository<Class>,
-        private readonly notificationsService: NotificationsService,
-        private readonly usersService: UsersService,
-        private readonly holidaysService: HolidaysService,
-    ) { }
+  constructor(
+    @InjectRepository(StudentAttendance)
+    private readonly studentAttendanceRepository: Repository<StudentAttendance>,
+    @InjectRepository(TeacherAttendance)
+    private readonly teacherAttendanceRepository: Repository<TeacherAttendance>,
+    @InjectRepository(Section)
+    private readonly sectionRepository: Repository<Section>,
+    @InjectRepository(Student)
+    private readonly studentRepository: Repository<Student>,
+    @InjectRepository(SubjectAllocation)
+    private readonly allocationRepository: Repository<SubjectAllocation>,
+    @InjectRepository(Class)
+    private readonly classRepository: Repository<Class>,
+    private readonly notificationsService: NotificationsService,
+    private readonly usersService: UsersService,
+    private readonly holidaysService: HolidaysService,
+  ) {}
 
-    // Student Attendance
-    async recordStudentAttendance(user: any, data: {
+  // Student Attendance
+  async recordStudentAttendance(
+    user: any,
+    data: {
+      studentId: string;
+      classId: string;
+      sectionId: string;
+      date: string;
+      status: AttendanceStatus;
+      remarks?: string;
+    },
+  ) {
+    if (user.role === 'TEACHER') {
+      const sections = await this.getTeacherSections(user.id);
+      const isAssigned = sections.some((s) => s.id === data.sectionId);
+      if (!isAssigned) {
+        throw new BadRequestException(
+          'You are not assigned to mark attendance for this section.',
+        );
+      }
+    }
+    const date = new Date(data.date);
+    date.setHours(0, 0, 0, 0); // Normalize date
+
+    let attendance = await this.studentAttendanceRepository.findOne({
+      where: {
+        student: { id: data.studentId },
+        date: date as any,
+      } as any,
+    });
+
+    if (!attendance) {
+      attendance = this.studentAttendanceRepository.create({
+        student: { id: data.studentId } as any,
+        class: { id: data.classId } as any,
+        section: { id: data.sectionId } as any,
+        date,
+      });
+    }
+
+    attendance.status = data.status;
+    attendance.remarks = data.remarks ?? null;
+    const saved = await this.studentAttendanceRepository.save(attendance);
+
+    if (data.status === AttendanceStatus.ABSENT) {
+      this.notifyParents(data.studentId, date);
+    }
+
+    // Return flattened object for frontend DTO compatibility
+    const student = await this.usersService.findOne(data.studentId);
+    return {
+      id: saved.id,
+      studentId: data.studentId,
+      studentName: student?.username || 'Unknown',
+      classId: data.classId,
+      sectionId: data.sectionId,
+      date: data.date,
+      status: saved.status,
+      remarks: saved.remarks,
+    };
+  }
+
+  async recordBatchAttendance(
+    user: any,
+    data: {
+      classId: string;
+      sectionId: string;
+      date: string;
+      attendances: {
         studentId: string;
-        classId: string;
-        sectionId: string;
-        date: string;
         status: AttendanceStatus;
         remarks?: string;
-    }) {
-        if (user.role === 'TEACHER') {
-             const sections = await this.getTeacherSections(user.id);
-             const isAssigned = sections.some(s => s.id === data.sectionId);
-             if (!isAssigned) {
-                 throw new BadRequestException('You are not assigned to mark attendance for this section.');
-             }
+      }[];
+    },
+  ) {
+    if (user.role === 'TEACHER') {
+      const sections = await this.getTeacherSections(user.id);
+      const isAssigned = sections.some((s) => s.id === data.sectionId);
+      if (!isAssigned) {
+        throw new BadRequestException(
+          'You are not assigned to mark attendance for this section.',
+        );
+      }
+    }
+    const results: any[] = [];
+    for (const item of data.attendances) {
+      results.push(
+        await this.recordStudentAttendance(user, {
+          ...item,
+          classId: data.classId,
+          sectionId: data.sectionId,
+          date: data.date,
+        }),
+      );
+    }
+    return results;
+  }
+
+  private async notifyParents(studentId: string, date: Date) {
+    try {
+      const student = await this.usersService.findOne(studentId);
+      if (student && student.parents) {
+        for (const parent of student.parents) {
+          await this.notificationsService.create({
+            recipientId: parent.id,
+            title: 'Attendance Alert',
+            message: `Your child ${student.username} was marked ABSENT on ${date.toDateString()}.`,
+            type: 'ABSENT_ALERT' as any,
+          });
         }
-        const date = new Date(data.date);
-        date.setHours(0, 0, 0, 0); // Normalize date
+      }
+    } catch (e) {
+      console.error('Failed to notify parents:', e);
+    }
+  }
 
-        let attendance = await this.studentAttendanceRepository.findOne({
-            where: {
-                student: { id: data.studentId },
-                date: date as any
-            } as any
-        });
+  async getStudentAttendance(
+    studentId: string,
+    startDate?: Date,
+    endDate?: Date,
+  ) {
+    const where: any = { student: { id: studentId } };
+    if (startDate && endDate) {
+      where.date = Between(startDate, endDate);
+    } else if (startDate) {
+      where.date = Between(startDate, new Date());
+    }
 
-        if (!attendance) {
-            attendance = this.studentAttendanceRepository.create({
-                student: { id: data.studentId } as any,
-                class: { id: data.classId } as any,
-                section: { id: data.sectionId } as any,
-                date,
-            });
-        }
+    const records = await this.studentAttendanceRepository.find({
+      where,
+      relations: ['student', 'class', 'section'],
+      order: { date: 'DESC' },
+    });
 
-        attendance.status = data.status;
-        attendance.remarks = data.remarks ?? null;
-        const saved = await this.studentAttendanceRepository.save(attendance);
+    return records.map((record) => ({
+      id: record.id,
+      studentId: record.student.id,
+      studentName: record.student.username,
+      classId: record.class?.id || '',
+      sectionId: record.section?.id || '',
+      date:
+        typeof record.date === 'string'
+          ? record.date
+          : record.date.toISOString().split('T')[0],
+      status: record.status,
+      remarks: record.remarks,
+    }));
+  }
 
-        if (data.status === AttendanceStatus.ABSENT) {
-            this.notifyParents(data.studentId, date);
-        }
+  async getClassAttendance(
+    classId?: string,
+    sectionId?: string,
+    date?: string,
+  ) {
+    const searchDate = date ? new Date(date) : new Date();
+    searchDate.setHours(0, 0, 0, 0);
 
-        // Return flattened object for frontend DTO compatibility
-        const student = await this.usersService.findOne(data.studentId);
+    if (classId && sectionId) {
+      // Fetch all students of this section (Teacher's mark attendance view)
+      const students = await this.studentRepository.find({
+        where: {
+          class: { id: classId },
+          section: { id: sectionId },
+        } as any,
+        relations: ['user'],
+      });
+
+      // Fetch existing attendance records for this date
+      const attendanceRecords = await this.studentAttendanceRepository.find({
+        where: {
+          class: { id: classId },
+          section: { id: sectionId },
+          date: searchDate as any,
+        } as any,
+        relations: ['student'],
+      });
+
+      // Merge: Return all students, and if they have an attendance record, attach it
+      return students.map((student) => {
+        const record = attendanceRecords.find(
+          (a) => a.student.id === student.user.id,
+        );
         return {
-            id: saved.id,
-            studentId: data.studentId,
-            studentName: student?.username || "Unknown",
-            classId: data.classId,
-            sectionId: data.sectionId,
-            date: data.date,
-            status: saved.status,
-            remarks: saved.remarks
+          id: record?.id || '',
+          studentId: student.user.id,
+          studentName: student.user.username,
+          classId,
+          sectionId,
+          date: date || searchDate.toISOString(),
+          status: record?.status || AttendanceStatus.PRESENT, // Default to present for UI if no record
+          remarks: record?.remarks || null,
         };
+      });
+    } else {
+      // Generic query (e.g., for Admin Dashboard reports)
+      const where: any = {};
+      if (classId) where.class = { id: classId };
+      if (sectionId) where.section = { id: sectionId };
+      where.date = searchDate as any;
+
+      const records = await this.studentAttendanceRepository.find({
+        where,
+        relations: ['student', 'class', 'section'],
+      });
+
+      return records.map((record) => ({
+        id: record.id,
+        studentId: record.student.id,
+        studentName: record.student.username,
+        classId: record.class?.id || classId || '',
+        sectionId: record.section?.id || sectionId || '',
+        className: record.class?.name || 'Unknown',
+        sectionName: record.section?.name || 'General',
+        date:
+          typeof record.date === 'string'
+            ? record.date
+            : record.date.toISOString().split('T')[0],
+        status: record.status,
+        remarks: record.remarks,
+      }));
+    }
+  }
+
+  async getTeacherSections(teacherId: string) {
+    // 1. Sections where teacher is Class Teacher
+    const classTeacherSections = await this.sectionRepository.find({
+      where: { classTeacher: { id: teacherId } } as any,
+      relations: ['class'],
+    });
+
+    // 2. Sections where teacher is assigned to a subject
+    const subjectAllocations = await this.allocationRepository.find({
+      where: { teacher: { user: { id: teacherId } } } as any,
+      relations: ['section', 'section.class'],
+    });
+
+    // Merge and unique by section ID
+    const sectionsMap = new Map<string, any>();
+    classTeacherSections.forEach((s) => {
+      sectionsMap.set(s.id, {
+        id: s.id,
+        name: s.name,
+        className: s.class.name,
+        classId: s.class.id,
+        role: 'CLASS_TEACHER',
+      });
+    });
+
+    subjectAllocations.forEach((a) => {
+      if (!sectionsMap.has(a.section.id)) {
+        sectionsMap.set(a.section.id, {
+          id: a.section.id,
+          name: a.section.name,
+          className: a.section.class.name,
+          classId: a.section.class.id,
+          role: 'SUBJECT_TEACHER',
+        });
+      }
+    });
+
+    return Array.from(sectionsMap.values());
+  }
+
+  // Teacher Attendance
+  async teacherCheckIn(teacherId: string) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let attendance = await this.teacherAttendanceRepository.findOne({
+      where: {
+        teacher: { id: teacherId },
+        date: today as any,
+      } as any,
+    });
+
+    if (attendance && attendance.checkIn) {
+      throw new BadRequestException('Already checked in today');
     }
 
-    async recordBatchAttendance(user: any, data: {
-        classId: string;
-        sectionId: string;
-        date: string;
-        attendances: { studentId: string; status: AttendanceStatus; remarks?: string }[];
-    }) {
-        if (user.role === 'TEACHER') {
-             const sections = await this.getTeacherSections(user.id);
-             const isAssigned = sections.some(s => s.id === data.sectionId);
-             if (!isAssigned) {
-                 throw new BadRequestException('You are not assigned to mark attendance for this section.');
-             }
-        }
-        const results: any[] = [];
-        for (const item of data.attendances) {
-            results.push(await this.recordStudentAttendance(user, {
-                ...item,
-                classId: data.classId,
-                sectionId: data.sectionId,
-                date: data.date
-            }));
-        }
-        return results;
+    if (attendance && attendance.checkOut) {
+      throw new BadRequestException(
+        'Already checked out for today. Cannot check in again.',
+      );
     }
 
-    private async notifyParents(studentId: string, date: Date) {
-        try {
-            const student = await this.usersService.findOne(studentId);
-            if (student && student.parents) {
-                for (const parent of student.parents) {
-                    await this.notificationsService.create({
-                        recipientId: parent.id,
-                        title: 'Attendance Alert',
-                        message: `Your child ${student.username} was marked ABSENT on ${date.toDateString()}.`,
-                        type: 'ABSENT_ALERT' as any
-                    });
-                }
-            }
-        } catch (e) {
-            console.error('Failed to notify parents:', e);
-        }
+    if (!attendance) {
+      attendance = this.teacherAttendanceRepository.create({
+        teacher: { id: teacherId } as any,
+        date: today,
+      });
     }
 
-    async getStudentAttendance(studentId: string, startDate?: Date, endDate?: Date) {
-        const where: any = { student: { id: studentId } };
-        if (startDate && endDate) {
-            where.date = Between(startDate, endDate);
-        } else if (startDate) {
-            where.date = Between(startDate, new Date());
-        }
+    attendance.checkIn = new Date();
+    attendance.status = 'PRESENT';
+    return this.teacherAttendanceRepository.save(attendance);
+  }
 
-        const records = await this.studentAttendanceRepository.find({
-            where,
-            relations: ['student', 'class', 'section'],
-            order: { date: 'DESC' }
-        });
+  async teacherCheckOut(teacherId: string) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-        return records.map(record => ({
-            id: record.id,
-            studentId: record.student.id,
-            studentName: record.student.username,
-            classId: record.class?.id || "",
-            sectionId: record.section?.id || "",
-            date: typeof record.date === 'string' ? record.date : record.date.toISOString().split('T')[0],
-            status: record.status,
-            remarks: record.remarks
-        }));
+    const attendance = await this.teacherAttendanceRepository.findOne({
+      where: {
+        teacher: { id: teacherId },
+        date: today as any,
+      } as any,
+    });
+
+    if (!attendance || !attendance.checkIn) {
+      throw new BadRequestException('Must check in before checking out');
     }
 
-    async getClassAttendance(classId?: string, sectionId?: string, date?: string) {
-        const searchDate = date ? new Date(date) : new Date();
-        searchDate.setHours(0, 0, 0, 0);
-
-        if (classId && sectionId) {
-            // Fetch all students of this section (Teacher's mark attendance view)
-            const students = await this.studentRepository.find({
-                where: {
-                    class: { id: classId },
-                    section: { id: sectionId }
-                } as any,
-                relations: ['user']
-            });
-
-            // Fetch existing attendance records for this date
-            const attendanceRecords = await this.studentAttendanceRepository.find({
-                where: {
-                    class: { id: classId },
-                    section: { id: sectionId },
-                    date: searchDate as any
-                } as any,
-                relations: ['student']
-            });
-
-            // Merge: Return all students, and if they have an attendance record, attach it
-            return students.map(student => {
-                const record = attendanceRecords.find(a => a.student.id === student.user.id);
-                return {
-                    id: record?.id || "",
-                    studentId: student.user.id,
-                    studentName: student.user.username,
-                    classId,
-                    sectionId,
-                    date: date || searchDate.toISOString(),
-                    status: record?.status || AttendanceStatus.PRESENT, // Default to present for UI if no record
-                    remarks: record?.remarks || null
-                };
-            });
-        } else {
-            // Generic query (e.g., for Admin Dashboard reports)
-            const where: any = {};
-            if (classId) where.class = { id: classId };
-            if (sectionId) where.section = { id: sectionId };
-            where.date = searchDate as any;
-
-            const records = await this.studentAttendanceRepository.find({
-                where,
-                relations: ['student', 'class', 'section']
-            });
-
-            return records.map(record => ({
-                id: record.id,
-                studentId: record.student.id,
-                studentName: record.student.username,
-                classId: record.class?.id || classId || "",
-                sectionId: record.section?.id || sectionId || "",
-                className: record.class?.name || "Unknown",
-                sectionName: record.section?.name || "General",
-                date: typeof record.date === 'string' ? record.date : record.date.toISOString().split('T')[0],
-                status: record.status,
-                remarks: record.remarks
-            }));
-        }
+    if (attendance.checkOut) {
+      throw new BadRequestException('Already checked out today');
     }
 
-    async getTeacherSections(teacherId: string) {
-        // 1. Sections where teacher is Class Teacher
-        const classTeacherSections = await this.sectionRepository.find({
-            where: { classTeacher: { id: teacherId } } as any,
-            relations: ['class']
-        });
+    attendance.checkOut = new Date();
+    return this.teacherAttendanceRepository.save(attendance);
+  }
 
-        // 2. Sections where teacher is assigned to a subject
-        const subjectAllocations = await this.allocationRepository.find({
-            where: { teacher: { user: { id: teacherId } } } as any,
-            relations: ['section', 'section.class']
-        });
+  async getTeacherTodayStatus(teacherId: string) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-        // Merge and unique by section ID
-        const sectionsMap = new Map<string, any>();
-        classTeacherSections.forEach(s => {
-            sectionsMap.set(s.id, {
-                id: s.id,
-                name: s.name,
-                className: s.class.name,
-                classId: s.class.id,
-                role: 'CLASS_TEACHER'
-            });
-        });
+    return this.teacherAttendanceRepository.findOne({
+      where: {
+        teacher: { id: teacherId },
+        date: today as any,
+      } as any,
+    });
+  }
 
-        subjectAllocations.forEach(a => {
-            if (!sectionsMap.has(a.section.id)) {
-                sectionsMap.set(a.section.id, {
-                    id: a.section.id,
-                    name: a.section.name,
-                    className: a.section.class.name,
-                    classId: a.section.class.id,
-                    role: 'SUBJECT_TEACHER'
-                });
-            }
-        });
-
-        return Array.from(sectionsMap.values());
+  async getTeacherAttendanceReport(
+    teacherId?: string,
+    startDate?: Date,
+    endDate?: Date,
+  ) {
+    const where: any = {};
+    if (teacherId) where.teacher = { id: teacherId };
+    if (startDate && endDate) {
+      where.date = Between(startDate, endDate);
     }
 
-    // Teacher Attendance
-    async teacherCheckIn(teacherId: string) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+    return this.teacherAttendanceRepository.find({
+      where,
+      relations: ['teacher'],
+      order: { date: 'DESC' },
+    });
+  }
 
-        let attendance = await this.teacherAttendanceRepository.findOne({
-            where: {
-                teacher: { id: teacherId },
-                date: today as any
-            } as any
-        });
+  async getDetailedDailyReport(date: string) {
+    const searchDate = new Date(date);
+    searchDate.setHours(0, 0, 0, 0);
 
-        if (attendance && attendance.checkIn) {
-            throw new BadRequestException('Already checked in today');
-        }
+    const studentAttendances = await this.studentAttendanceRepository.find({
+      where: { date: searchDate as any },
+      relations: ['student', 'class', 'section'],
+    });
 
-        if (attendance && attendance.checkOut) {
-            throw new BadRequestException('Already checked out for today. Cannot check in again.');
-        }
+    const teacherAttendances = await this.teacherAttendanceRepository.find({
+      where: { date: searchDate as any },
+      relations: ['teacher'],
+    });
 
-        if (!attendance) {
-            attendance = this.teacherAttendanceRepository.create({
-                teacher: { id: teacherId } as any,
-                date: today,
-            });
-        }
+    return {
+      date,
+      students: studentAttendances.map((a) => ({
+        id: a.student.id,
+        name: a.student.username,
+        className: a.class?.name,
+        sectionName: a.section?.name,
+        status: a.status,
+        remarks: a.remarks,
+      })),
+      teachers: teacherAttendances.map((a) => ({
+        id: a.teacher.id,
+        name: a.teacher.username,
+        checkIn: a.checkIn,
+        checkOut: a.checkOut,
+        status: a.status,
+      })),
+    };
+  }
 
-        attendance.checkIn = new Date();
-        attendance.status = 'PRESENT';
-        return this.teacherAttendanceRepository.save(attendance);
+  async getDailyAttendanceSummaryInRange(startDate: Date, endDate: Date) {
+    const records = await this.studentAttendanceRepository.find({
+      where: { date: Between(startDate, endDate) } as any,
+    });
+
+    const summary: Record<string, { total: number; present: number }> = {};
+    records.forEach((r) => {
+      const d = new Date(r.date).toISOString().split('T')[0];
+      if (!summary[d]) summary[d] = { total: 0, present: 0 };
+      summary[d].total++;
+      if (r.status === 'PRESENT') summary[d].present++;
+    });
+
+    return Object.entries(summary)
+      .map(([date, counts]) => ({
+        date,
+        percentage:
+          counts.total > 0 ? (counts.present / counts.total) * 100 : 0,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  // --- NEW REPORTING METHODS ---
+
+  /**
+   * Calculates working days in a range, excluding Saturdays and Holidays
+   */
+  async getWorkingDaysInRange(startDate: Date, endDate: Date): Promise<Date[]> {
+    const holidays = await this.holidaysService.getHolidaysInRange(
+      startDate,
+      endDate,
+    );
+    const holidayDates = new Set(holidays.map((h) => h.date));
+
+    const workingDays: Date[] = [];
+    const current = new Date(startDate);
+    current.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(0, 0, 0, 0);
+
+    while (current <= end) {
+      const dayOfWeek = current.getDay();
+      const dateStr = current.toISOString().split('T')[0];
+
+      // 6 is Saturday in JS (0 is Sunday, 1 is Monday...)
+      // Nepal has Saturday as a weekend.
+      if (dayOfWeek !== 6 && !holidayDates.has(dateStr)) {
+        workingDays.push(new Date(current));
+      }
+      current.setDate(current.getDate() + 1);
+    }
+    return workingDays;
+  }
+
+  async getStudentAttendanceReport(
+    classId: string,
+    sectionId?: string,
+    startDate?: string,
+    endDate?: string,
+  ) {
+    // Default range: Baishak 1, 2083 to Chaitra End, 2083 (Academic Year 2083)
+    const start = startDate ? new Date(startDate) : new Date('2026-04-14'); // Baishak 1, 2083
+    const end = endDate ? new Date(endDate) : new Date('2027-04-13'); // Approx Chaitra 30, 2083
+
+    const workingDays = await this.getWorkingDaysInRange(start, end);
+    const totalWorkingDays = workingDays.length;
+
+    // Get Section info (including Class Teacher)
+    let classTeacherName = 'N/A';
+    if (sectionId) {
+      const section = await this.sectionRepository.findOne({
+        where: { id: sectionId },
+        relations: ['classTeacher'],
+      });
+      if (section?.classTeacher) {
+        classTeacherName = section.classTeacher.username;
+      }
     }
 
-    async teacherCheckOut(teacherId: string) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+    // Fetch students
+    const where: any = { class: { id: classId } };
+    if (sectionId) where.section = { id: sectionId };
 
-        const attendance = await this.teacherAttendanceRepository.findOne({
-            where: {
-                teacher: { id: teacherId },
-                date: today as any
-            } as any
-        });
+    const students = await this.studentRepository.find({
+      where: where,
+      relations: ['user'],
+    });
 
-        if (!attendance || !attendance.checkIn) {
-            throw new BadRequestException('Must check in before checking out');
-        }
+    // Fetch all attendance for these students in range
+    const attendanceRecords = await this.studentAttendanceRepository.find({
+      where: {
+        class: { id: classId },
+        ...(sectionId ? { section: { id: sectionId } } : {}),
+        date: Between(start, end),
+      } as any,
+      relations: ['student'],
+    });
 
-        if (attendance.checkOut) {
-            throw new BadRequestException('Already checked out today');
-        }
+    const report = students.map((student) => {
+      const studentRecords = attendanceRecords.filter(
+        (a) => a.student.id === student.user.id,
+      );
+      const presentDays = studentRecords.filter(
+        (r) =>
+          r.status === AttendanceStatus.PRESENT ||
+          r.status === AttendanceStatus.LATE,
+      ).length;
+      const absentDays = studentRecords.filter(
+        (r) => r.status === AttendanceStatus.ABSENT,
+      ).length;
 
-        attendance.checkOut = new Date();
-        return this.teacherAttendanceRepository.save(attendance);
+      return {
+        studentId: student.user.id,
+        studentName: student.user.username,
+        rollNumber: student.rollNumber,
+        presentDays,
+        absentDays,
+        totalWorkingDays,
+        attendancePercentage:
+          totalWorkingDays > 0
+            ? Math.round((presentDays / totalWorkingDays) * 100)
+            : 0,
+      };
+    });
+
+    return {
+      classTeacherName,
+      totalWorkingDays,
+      startDate: start.toISOString().split('T')[0],
+      endDate: end.toISOString().split('T')[0],
+      students: report,
+    };
+  }
+
+  async getTeachersAttendanceReport(startDate?: string, endDate?: string) {
+    // Default range: Baishak 1, 2083 to Chaitra End, 2083
+    const start = startDate ? new Date(startDate) : new Date('2026-04-14');
+    const end = endDate ? new Date(endDate) : new Date('2027-04-13');
+
+    const workingDays = await this.getWorkingDaysInRange(start, end);
+    const totalWorkingDays = workingDays.length;
+
+    const teachers = await this.usersService.findAllByRole('TEACHER' as any);
+
+    const attendanceRecords = await this.teacherAttendanceRepository.find({
+      where: {
+        date: Between(start, end),
+      } as any,
+      relations: ['teacher'],
+    });
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const report = teachers.map((teacher) => {
+      const teacherRecords = attendanceRecords.filter(
+        (a) => a.teacher.id === teacher.id,
+      );
+      const presentDays = teacherRecords.filter(
+        (r) => r.status === 'PRESENT',
+      ).length;
+
+      const todayRecord = teacherRecords.find((r) => {
+        const rDate = new Date(r.date);
+        rDate.setHours(0, 0, 0, 0);
+        return rDate.getTime() === todayStart.getTime();
+      });
+
+      return {
+        teacherId: teacher.id,
+        teacherName: teacher.username,
+        presentDays,
+        totalWorkingDays,
+        attendancePercentage:
+          totalWorkingDays > 0
+            ? Math.round((presentDays / totalWorkingDays) * 100)
+            : 0,
+        todayCheckIn: todayRecord?.checkIn || null,
+        todayCheckOut: todayRecord?.checkOut || null,
+      };
+    });
+
+    return {
+      totalWorkingDays,
+      startDate: start.toISOString().split('T')[0],
+      endDate: end.toISOString().split('T')[0],
+      teachers: report,
+    };
+  }
+
+  async getIndividualDetailedReport(
+    userId: string,
+    startDate?: string,
+    endDate?: string,
+  ) {
+    const start = startDate
+      ? new Date(startDate)
+      : new Date(new Date().getFullYear(), 0, 1);
+    const end = endDate ? new Date(endDate) : new Date();
+
+    const user = await this.usersService.findOne(userId);
+    if (!user) throw new NotFoundException('User not found');
+
+    let records: any[] = [];
+    if (user.role === 'STUDENT') {
+      records = await this.studentAttendanceRepository.find({
+        where: { student: { id: userId }, date: Between(start, end) } as any,
+        order: { date: 'DESC' },
+      });
+    } else if (user.role === 'TEACHER') {
+      records = await this.teacherAttendanceRepository.find({
+        where: { teacher: { id: userId }, date: Between(start, end) } as any,
+        order: { date: 'DESC' },
+      });
     }
 
-    async getTeacherTodayStatus(teacherId: string) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+    const holidays = await this.holidaysService.getHolidaysInRange(start, end);
 
-        return this.teacherAttendanceRepository.findOne({
-            where: {
-                teacher: { id: teacherId },
-                date: today as any
-            } as any
-        });
-    }
-
-    async getTeacherAttendanceReport(teacherId?: string, startDate?: Date, endDate?: Date) {
-        const where: any = {};
-        if (teacherId) where.teacher = { id: teacherId };
-        if (startDate && endDate) {
-            where.date = Between(startDate, endDate);
-        }
-
-        return this.teacherAttendanceRepository.find({
-            where,
-            relations: ['teacher'],
-            order: { date: 'DESC' }
-        });
-    }
-
-    async getDetailedDailyReport(date: string) {
-        const searchDate = new Date(date);
-        searchDate.setHours(0, 0, 0, 0);
-
-        const studentAttendances = await this.studentAttendanceRepository.find({
-            where: { date: searchDate as any },
-            relations: ['student', 'class', 'section']
-        });
-
-        const teacherAttendances = await this.teacherAttendanceRepository.find({
-            where: { date: searchDate as any },
-            relations: ['teacher']
-        });
-
-        return {
-            date,
-            students: studentAttendances.map(a => ({
-                id: a.student.id,
-                name: a.student.username,
-                className: a.class?.name,
-                sectionName: a.section?.name,
-                status: a.status,
-                remarks: a.remarks
-            })),
-            teachers: teacherAttendances.map(a => ({
-                id: a.teacher.id,
-                name: a.teacher.username,
-                checkIn: a.checkIn,
-                checkOut: a.checkOut,
-                status: a.status
-            }))
-        };
-    }
-
-    async getDailyAttendanceSummaryInRange(startDate: Date, endDate: Date) {
-        const records = await this.studentAttendanceRepository.find({
-            where: { date: Between(startDate, endDate) } as any
-        });
-
-        const summary: Record<string, { total: number, present: number }> = {};
-        records.forEach(r => {
-            const d = new Date(r.date).toISOString().split('T')[0];
-            if (!summary[d]) summary[d] = { total: 0, present: 0 };
-            summary[d].total++;
-            if (r.status === 'PRESENT') summary[d].present++;
-        });
-
-        return Object.entries(summary).map(([date, counts]) => ({
-            date,
-            percentage: counts.total > 0 ? (counts.present / counts.total) * 100 : 0
-        })).sort((a, b) => a.date.localeCompare(b.date));
-    }
-
-    // --- NEW REPORTING METHODS ---
-
-    /**
-     * Calculates working days in a range, excluding Saturdays and Holidays
-     */
-    async getWorkingDaysInRange(startDate: Date, endDate: Date): Promise<Date[]> {
-        const holidays = await this.holidaysService.getHolidaysInRange(startDate, endDate);
-        const holidayDates = new Set(holidays.map(h => h.date));
-        
-        const workingDays: Date[] = [];
-        const current = new Date(startDate);
-        current.setHours(0, 0, 0, 0);
-        const end = new Date(endDate);
-        end.setHours(0, 0, 0, 0);
-
-        while (current <= end) {
-            const dayOfWeek = current.getDay();
-            const dateStr = current.toISOString().split('T')[0];
-
-            // 6 is Saturday in JS (0 is Sunday, 1 is Monday...)
-            // Nepal has Saturday as a weekend.
-            if (dayOfWeek !== 6 && !holidayDates.has(dateStr)) {
-                workingDays.push(new Date(current));
-            }
-            current.setDate(current.getDate() + 1);
-        }
-        return workingDays;
-    }
-
-    async getStudentAttendanceReport(classId: string, sectionId?: string, startDate?: string, endDate?: string) {
-        const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), 0, 1);
-        const end = endDate ? new Date(endDate) : new Date();
-        
-        const workingDays = await this.getWorkingDaysInRange(start, end);
-        const totalWorkingDays = workingDays.length;
-
-        // Get Section info (including Class Teacher)
-        let classTeacherName = "N/A";
-        if (sectionId) {
-            const section = await this.sectionRepository.findOne({
-                where: { id: sectionId },
-                relations: ['classTeacher']
-            });
-            if (section?.classTeacher) {
-                classTeacherName = section.classTeacher.username;
-            }
-        }
-
-        // Fetch students
-        const where: any = { class: { id: classId } };
-        if (sectionId) where.section = { id: sectionId };
-        
-        const students = await this.studentRepository.find({
-            where: where as any,
-            relations: ['user']
-        });
-
-        // Fetch all attendance for these students in range
-        const attendanceRecords = await this.studentAttendanceRepository.find({
-            where: {
-                class: { id: classId },
-                ...(sectionId ? { section: { id: sectionId } } : {}),
-                date: Between(start, end)
-            } as any,
-            relations: ['student']
-        });
-
-        const report = students.map(student => {
-            const studentRecords = attendanceRecords.filter(a => a.student.id === student.user.id);
-            const presentDays = studentRecords.filter(r => r.status === AttendanceStatus.PRESENT || r.status === AttendanceStatus.LATE).length;
-            const absentDays = studentRecords.filter(r => r.status === AttendanceStatus.ABSENT).length;
-            
-            return {
-                studentId: student.user.id,
-                studentName: student.user.username,
-                rollNumber: student.rollNumber,
-                presentDays,
-                absentDays,
-                totalWorkingDays,
-                attendancePercentage: totalWorkingDays > 0 ? Math.round((presentDays / totalWorkingDays) * 100) : 0
-            };
-        });
-
-        return {
-            classTeacherName,
-            totalWorkingDays,
-            startDate: start.toISOString().split('T')[0],
-            endDate: end.toISOString().split('T')[0],
-            students: report
-        };
-    }
-
-    async getTeachersAttendanceReport(startDate?: string, endDate?: string) {
-        const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), 0, 1);
-        const end = endDate ? new Date(endDate) : new Date();
-        
-        const workingDays = await this.getWorkingDaysInRange(start, end);
-        const totalWorkingDays = workingDays.length;
-
-        const teachers = await this.usersService.findAllByRole('TEACHER' as any);
-        
-        const attendanceRecords = await this.teacherAttendanceRepository.find({
-            where: {
-                date: Between(start, end)
-            } as any,
-            relations: ['teacher']
-        });
-
-        const report = teachers.map(teacher => {
-            const teacherRecords = attendanceRecords.filter(a => a.teacher.id === teacher.id);
-            const presentDays = teacherRecords.filter(r => r.status === 'PRESENT').length;
-            
-            return {
-                teacherId: teacher.id,
-                teacherName: teacher.username,
-                presentDays,
-                totalWorkingDays,
-                attendancePercentage: totalWorkingDays > 0 ? Math.round((presentDays / totalWorkingDays) * 100) : 0
-            };
-        });
-
-        return {
-            totalWorkingDays,
-            startDate: start.toISOString().split('T')[0],
-            endDate: end.toISOString().split('T')[0],
-            teachers: report
-        };
-    }
-
-    async getIndividualDetailedReport(userId: string, startDate?: string, endDate?: string) {
-        const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), 0, 1);
-        const end = endDate ? new Date(endDate) : new Date();
-
-        const user = await this.usersService.findOne(userId);
-        if (!user) throw new NotFoundException('User not found');
-
-        let records: any[] = [];
-        if (user.role === 'STUDENT') {
-            records = await this.studentAttendanceRepository.find({
-                where: { student: { id: userId }, date: Between(start, end) } as any,
-                order: { date: 'DESC' }
-            });
-        } else if (user.role === 'TEACHER') {
-            records = await this.teacherAttendanceRepository.find({
-                where: { teacher: { id: userId }, date: Between(start, end) } as any,
-                order: { date: 'DESC' }
-            });
-        }
-
-        const holidays = await this.holidaysService.getHolidaysInRange(start, end);
-        
-        return {
-            user: {
-                id: user.id,
-                username: user.username,
-                role: user.role
-            },
-            records: records.map(r => ({
-                date: r.date,
-                status: r.status,
-                remarks: r.remarks,
-                checkIn: r.checkIn,
-                checkOut: r.checkOut
-            })),
-            holidays: holidays.map(h => ({
-                date: h.date,
-                title: h.title
-            }))
-        };
-    }
+    return {
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+      },
+      records: records.map((r) => ({
+        date: r.date,
+        status: r.status,
+        remarks: r.remarks,
+        checkIn: r.checkIn,
+        checkOut: r.checkOut,
+      })),
+      holidays: holidays.map((h) => ({
+        date: h.date,
+        title: h.title,
+      })),
+    };
+  }
 }

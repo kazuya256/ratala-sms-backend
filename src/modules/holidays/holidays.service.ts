@@ -15,20 +15,68 @@ export class HolidaysService implements OnModuleInit {
     const count = await this.holidayRepository.count();
     if (count === 0) {
       const defaultHolidays = [
-        { title: "Nepali New Year 2083", date: "2026-04-14", description: "Baisakh 1, Official start of BS 2083" },
-        { title: "International Labour Day", date: "2026-05-01", description: "Baisakh 18" },
-        { title: "Buddha Jayanti / Ubhauli", date: "2026-05-11", description: "Baisakh 28" },
-        { title: "Dashain Phulpati", date: "2026-09-27", description: "Aswin 1" },
-        { title: "Dashain Maha Asthami", date: "2026-09-28", description: "Aswin 2" },
-        { title: "Dashain Maha Nawami / Constitution Day", date: "2026-09-29", description: "Aswin 3" },
-        { title: "Dashain Vijaya Dashami", date: "2026-09-30", description: "Aswin 4" },
-        { title: "Tihar: Laxmi Puja", date: "2026-10-08", description: "Kartik 12" },
-        { title: "Tihar: Bhai Tika", date: "2026-10-10", description: "Kartik 14" },
-        { title: "Maghe Sankranti", date: "2027-01-15", description: "Magh 1" },
-        { title: "Prajatantra Diwas", date: "2027-02-19", description: "Falgun 7" },
-        { title: "Maha Shivaratri", date: "2027-02-24", description: "Falgun 12" },
-        { title: "Holi (Hills/Kathmandu)", date: "2027-03-22", description: "Chaitra 8" },
-        { title: "Holi (Terai)", date: "2027-03-23", description: "Chaitra 9" },
+        {
+          title: 'Nepali New Year 2083',
+          date: '2026-04-14',
+          description: 'Baisakh 1, Official start of BS 2083',
+        },
+        {
+          title: 'International Labour Day',
+          date: '2026-05-01',
+          description: 'Baisakh 18',
+        },
+        {
+          title: 'Buddha Jayanti / Ubhauli',
+          date: '2026-05-11',
+          description: 'Baisakh 28',
+        },
+        {
+          title: 'Dashain Phulpati',
+          date: '2026-09-27',
+          description: 'Aswin 1',
+        },
+        {
+          title: 'Dashain Maha Asthami',
+          date: '2026-09-28',
+          description: 'Aswin 2',
+        },
+        {
+          title: 'Dashain Maha Nawami / Constitution Day',
+          date: '2026-09-29',
+          description: 'Aswin 3',
+        },
+        {
+          title: 'Dashain Vijaya Dashami',
+          date: '2026-09-30',
+          description: 'Aswin 4',
+        },
+        {
+          title: 'Tihar: Laxmi Puja',
+          date: '2026-10-08',
+          description: 'Kartik 12',
+        },
+        {
+          title: 'Tihar: Bhai Tika',
+          date: '2026-10-10',
+          description: 'Kartik 14',
+        },
+        { title: 'Maghe Sankranti', date: '2027-01-15', description: 'Magh 1' },
+        {
+          title: 'Prajatantra Diwas',
+          date: '2027-02-19',
+          description: 'Falgun 7',
+        },
+        {
+          title: 'Maha Shivaratri',
+          date: '2027-02-24',
+          description: 'Falgun 12',
+        },
+        {
+          title: 'Holi (Hills/Kathmandu)',
+          date: '2027-03-22',
+          description: 'Chaitra 8',
+        },
+        { title: 'Holi (Terai)', date: '2027-03-23', description: 'Chaitra 9' },
       ];
       await this.holidayRepository.save(defaultHolidays);
     }
@@ -42,9 +90,13 @@ export class HolidaysService implements OnModuleInit {
   async getHolidaysInRange(startDate: Date, endDate: Date): Promise<Holiday[]> {
     const startStr = startDate.toISOString().split('T')[0];
     const endStr = endDate.toISOString().split('T')[0];
-    
-    return await this.holidayRepository.createQueryBuilder('holiday')
-      .where('holiday.date BETWEEN :start AND :end', { start: startStr, end: endStr })
+
+    return await this.holidayRepository
+      .createQueryBuilder('holiday')
+      .where('holiday.date BETWEEN :start AND :end', {
+        start: startStr,
+        end: endStr,
+      })
       .getMany();
   }
 
@@ -62,7 +114,10 @@ export class HolidaysService implements OnModuleInit {
     return holiday;
   }
 
-  async update(id: string, updateHolidayDto: UpdateHolidayDto): Promise<Holiday> {
+  async update(
+    id: string,
+    updateHolidayDto: UpdateHolidayDto,
+  ): Promise<Holiday> {
     const holiday = await this.findOne(id);
     Object.assign(holiday, updateHolidayDto);
     return await this.holidayRepository.save(holiday);

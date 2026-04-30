@@ -5,9 +5,9 @@ import { NoticesService } from './notices.service.js';
 import { NoticesController } from './notices.controller.js';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Notice])],
-    providers: [NoticesService],
-    controllers: [NoticesController],
-    exports: [NoticesService],
+  imports: [TypeOrmModule.forFeature([Notice])],
+  providers: [NoticesService],
+  controllers: [NoticesController],
+  exports: [NoticesService],
 })
-export class NoticesModule { }
+export class NoticesModule {}

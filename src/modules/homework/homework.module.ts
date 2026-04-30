@@ -6,12 +6,9 @@ import { HomeworkController } from './homework.controller.js';
 import { CloudinaryModule } from '../cloudinary/cloudinary.module.js';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Homework]),
-    CloudinaryModule
-  ],
+  imports: [TypeOrmModule.forFeature([Homework]), CloudinaryModule],
   providers: [HomeworkService],
   controllers: [HomeworkController],
-  exports: [HomeworkService]
+  exports: [HomeworkService],
 })
 export class HomeworkModule {}

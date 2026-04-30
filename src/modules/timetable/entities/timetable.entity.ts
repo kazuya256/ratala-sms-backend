@@ -6,45 +6,45 @@ import { Subject } from '../../subjects/entities/subject.entity.js';
 import { Teacher } from '../../users/entities/teacher.entity.js';
 
 export enum DayOfWeek {
-    MONDAY = 'MONDAY',
-    TUESDAY = 'TUESDAY',
-    WEDNESDAY = 'WEDNESDAY',
-    THURSDAY = 'THURSDAY',
-    FRIDAY = 'FRIDAY',
-    SATURDAY = 'SATURDAY',
-    SUNDAY = 'SUNDAY',
+  MONDAY = 'MONDAY',
+  TUESDAY = 'TUESDAY',
+  WEDNESDAY = 'WEDNESDAY',
+  THURSDAY = 'THURSDAY',
+  FRIDAY = 'FRIDAY',
+  SATURDAY = 'SATURDAY',
+  SUNDAY = 'SUNDAY',
 }
 
 @Entity('timetable')
 export class Timetable extends AbstractEntity {
-    @ManyToOne(() => Class, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'classId' })
-    class: Class;
+  @ManyToOne(() => Class, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'classId' })
+  class: Class;
 
-    @ManyToOne(() => Section, { onDelete: 'CASCADE', nullable: true })
-    @JoinColumn({ name: 'sectionId' })
-    section: Section | null;
+  @ManyToOne(() => Section, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'sectionId' })
+  section: Section | null;
 
-    @ManyToOne(() => Subject)
-    @JoinColumn({ name: 'subjectId' })
-    subject: Subject;
+  @ManyToOne(() => Subject)
+  @JoinColumn({ name: 'subjectId' })
+  subject: Subject;
 
-    @ManyToOne(() => Teacher, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'teacherId' })
-    teacher: Teacher;
+  @ManyToOne(() => Teacher, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'teacherId' })
+  teacher: Teacher;
 
-    @Column({
-        type: 'enum',
-        enum: DayOfWeek,
-    })
-    dayOfWeek: DayOfWeek;
+  @Column({
+    type: 'enum',
+    enum: DayOfWeek,
+  })
+  dayOfWeek: DayOfWeek;
 
-    @Column({ type: 'varchar' })
-    startTime: string;
+  @Column({ type: 'varchar' })
+  startTime: string;
 
-    @Column({ type: 'varchar' })
-    endTime: string;
+  @Column({ type: 'varchar' })
+  endTime: string;
 
-    @Column({ type: 'varchar', nullable: true })
-    roomNumber: string | null;
+  @Column({ type: 'varchar', nullable: true })
+  roomNumber: string | null;
 }

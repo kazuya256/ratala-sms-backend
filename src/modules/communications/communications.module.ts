@@ -8,12 +8,12 @@ import { Section } from '../classes/entities/section.entity.js';
 import { Student } from '../users/entities/student.entity.js';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([Complain, Section, Student]),
-        UsersModule,
-    ],
-    providers: [CommunicationsService],
-    controllers: [CommunicationsController],
-    exports: [CommunicationsService],
+  imports: [
+    TypeOrmModule.forFeature([Complain, Section, Student]),
+    UsersModule,
+  ],
+  providers: [CommunicationsService],
+  controllers: [CommunicationsController],
+  exports: [CommunicationsService],
 })
-export class CommunicationsModule { }
+export class CommunicationsModule {}

@@ -13,12 +13,19 @@ import { User } from '../users/entities/user.entity.js';
 import { UsersModule } from '../users/users.module.js';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([Subject, SubjectAllocation, Teacher, Section, User, Class]),
-        UsersModule
-    ],
-    controllers: [SubjectsController],
-    providers: [SubjectsService],
-    exports: [SubjectsService],
+  imports: [
+    TypeOrmModule.forFeature([
+      Subject,
+      SubjectAllocation,
+      Teacher,
+      Section,
+      User,
+      Class,
+    ]),
+    UsersModule,
+  ],
+  controllers: [SubjectsController],
+  providers: [SubjectsService],
+  exports: [SubjectsService],
 })
-export class SubjectsModule { }
+export class SubjectsModule {}

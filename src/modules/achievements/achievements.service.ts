@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Achievement } from './entities/achievement.entity.js';
@@ -14,7 +18,10 @@ export class AchievementsService {
     private readonly cloudinaryService: CloudinaryService,
   ) {}
 
-  async create(createAchievementDto: CreateAchievementDto, file?: Express.Multer.File): Promise<Achievement> {
+  async create(
+    createAchievementDto: CreateAchievementDto,
+    file?: Express.Multer.File,
+  ): Promise<Achievement> {
     let imageUrl: string | undefined = undefined;
     if (file) {
       try {
@@ -30,7 +37,9 @@ export class AchievementsService {
       achievementData.imageUrl = imageUrl;
     }
 
-    const achievement = this.achievementRepository.create(achievementData as Partial<Achievement>);
+    const achievement = this.achievementRepository.create(
+      achievementData as Partial<Achievement>,
+    );
     return await this.achievementRepository.save(achievement);
   }
 
@@ -41,16 +50,22 @@ export class AchievementsService {
   }
 
   async findOne(id: string): Promise<Achievement> {
-    const achievement = await this.achievementRepository.findOne({ where: { id } });
+    const achievement = await this.achievementRepository.findOne({
+      where: { id },
+    });
     if (!achievement) {
       throw new NotFoundException(`Achievement with ID ${id} not found`);
     }
     return achievement;
   }
 
-  async update(id: string, updateAchievementDto: UpdateAchievementDto, file?: Express.Multer.File): Promise<Achievement> {
+  async update(
+    id: string,
+    updateAchievementDto: UpdateAchievementDto,
+    file?: Express.Multer.File,
+  ): Promise<Achievement> {
     const achievement = await this.findOne(id);
-    
+
     let imageUrl = achievement.imageUrl;
     if (file) {
       try {

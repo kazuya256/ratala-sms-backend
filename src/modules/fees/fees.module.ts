@@ -7,9 +7,9 @@ import { FeesService } from './fees.service.js';
 import { FeesController } from './fees.controller.js';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([FeeStructure, StudentFee, Payment])],
-    providers: [FeesService],
-    controllers: [FeesController],
-    exports: [FeesService],
+  imports: [TypeOrmModule.forFeature([FeeStructure, StudentFee, Payment])],
+  providers: [FeesService],
+  controllers: [FeesController],
+  exports: [FeesService],
 })
-export class FeesModule { }
+export class FeesModule {}

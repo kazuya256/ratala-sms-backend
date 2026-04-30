@@ -13,21 +13,21 @@ import { SubjectAllocation } from '../subjects/entities/subject-allocation.entit
 import { HolidaysModule } from '../holidays/holidays.module.js';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([
-            StudentAttendance, 
-            TeacherAttendance,
-            Section,
-            Student,
-            SubjectAllocation,
-            Class
-        ]),
-        NotificationsModule,
-        UsersModule,
-        HolidaysModule
-    ],
-    controllers: [AttendanceController],
-    providers: [AttendanceService],
-    exports: [AttendanceService],
+  imports: [
+    TypeOrmModule.forFeature([
+      StudentAttendance,
+      TeacherAttendance,
+      Section,
+      Student,
+      SubjectAllocation,
+      Class,
+    ]),
+    NotificationsModule,
+    UsersModule,
+    HolidaysModule,
+  ],
+  controllers: [AttendanceController],
+  providers: [AttendanceService],
+  exports: [AttendanceService],
 })
-export class AttendanceModule { }
+export class AttendanceModule {}
