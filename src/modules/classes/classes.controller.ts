@@ -40,14 +40,21 @@ export class ClassesController {
 
   @Post()
   @Roles(UserRole.ADMIN)
-  async createClass(@Body('name') name: string) {
-    return this.classesService.createClass(name);
+  async createClass(
+    @Body('name') name: string,
+    @Body('isPrePrimary') isPrePrimary: boolean,
+  ) {
+    return this.classesService.createClass(name, isPrePrimary);
   }
 
   @Put(':id')
   @Roles(UserRole.ADMIN)
-  async updateClass(@Param('id') id: string, @Body('name') name: string) {
-    return this.classesService.updateClass(id, name);
+  async updateClass(
+    @Param('id') id: string,
+    @Body('name') name: string,
+    @Body('isPrePrimary') isPrePrimary: boolean,
+  ) {
+    return this.classesService.updateClass(id, name, isPrePrimary);
   }
 
   @Post(':classId/sections')

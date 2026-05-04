@@ -8,6 +8,9 @@ export class Class extends AbstractEntity {
   @Column({ unique: true })
   name: string; // e.g., "Grade 10"
 
+  @Column({ default: false })
+  isPrePrimary: boolean;
+
   @OneToMany(() => Section, (section) => section.class)
   sections: Section[];
 

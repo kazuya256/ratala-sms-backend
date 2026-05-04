@@ -37,6 +37,8 @@ export class UsersService {
         'studentProfile',
         'studentProfile.class',
         'studentProfile.section',
+        'sectionsManaged',
+        'sectionsManaged.class',
       ],
     });
   }

@@ -50,8 +50,8 @@ export class ClassesService {
     return cls;
   }
 
-  async createClass(name: string): Promise<Class> {
-    const cls = this.classRepository.create({ name });
+  async createClass(name: string, isPrePrimary: boolean = false): Promise<Class> {
+    const cls = this.classRepository.create({ name, isPrePrimary });
     return this.classRepository.save(cls);
   }
 
@@ -83,9 +83,14 @@ export class ClassesService {
     return this.sectionRepository.save(section);
   }
 
-  async updateClass(id: string, name: string): Promise<Class> {
+  async updateClass(
+    id: string,
+    name: string,
+    isPrePrimary: boolean,
+  ): Promise<Class> {
     const cls = await this.findOne(id);
     cls.name = name;
+    cls.isPrePrimary = isPrePrimary;
     return this.classRepository.save(cls);
   }
 

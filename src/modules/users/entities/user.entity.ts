@@ -6,10 +6,12 @@ import {
   ManyToMany,
   JoinTable,
   OneToOne,
+  OneToMany,
 } from 'typeorm';
 import { AbstractEntity } from '../../../common/abstract.entity.js';
 import { UserRole } from '../../../common/constants/role.enum.js';
 import * as bcrypt from 'bcrypt';
+import { Section } from '../../classes/entities/section.entity.js';
 
 @Entity('users')
 export class User extends AbstractEntity {
@@ -69,6 +71,9 @@ export class User extends AbstractEntity {
 
   @OneToOne('Parent', 'user', { cascade: true })
   parentProfile: any;
+
+  @OneToMany(() => Section, (section) => section.classTeacher)
+  sectionsManaged: Section[];
 
   @BeforeInsert()
   @BeforeUpdate()

@@ -91,6 +91,11 @@ export class AuthService {
         role: user.role,
         isVerified: user.isVerified,
         classId: user.studentProfile?.class?.id,
+        className: user.studentProfile?.class?.name,
+        isPrePrimary:
+          user.studentProfile?.class?.isPrePrimary ||
+          user.sectionsManaged?.some((s) => s.class?.isPrePrimary) ||
+          false,
         sectionId: user.studentProfile?.section?.id,
       },
     };
