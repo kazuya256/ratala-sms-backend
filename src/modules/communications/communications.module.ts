@@ -6,11 +6,13 @@ import { CommunicationsController } from './communications.controller.js';
 import { UsersModule } from '../users/users.module.js';
 import { Section } from '../classes/entities/section.entity.js';
 import { Student } from '../users/entities/student.entity.js';
+import { CloudinaryModule } from '../cloudinary/cloudinary.module.js';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Complain, Section, Student]),
     UsersModule,
+    CloudinaryModule,
   ],
   providers: [CommunicationsService],
   controllers: [CommunicationsController],

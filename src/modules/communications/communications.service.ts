@@ -9,6 +9,7 @@ import { Complain, ComplainType } from './entities/complain.entity.js';
 import { UsersService } from '../users/users.service.js';
 import { Section } from '../classes/entities/section.entity.js';
 import { Student } from '../users/entities/student.entity.js';
+import { CloudinaryService } from '../cloudinary/cloudinary.service.js';
 
 @Injectable()
 export class CommunicationsService {
@@ -20,6 +21,7 @@ export class CommunicationsService {
     @InjectRepository(Student)
     private readonly studentRepository: Repository<Student>,
     private readonly usersService: UsersService,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   async createComplain(
@@ -30,6 +32,7 @@ export class CommunicationsService {
       content: string;
       type: ComplainType;
     },
+    files?: Express.Multer.File[],
   ) {
     let recipientId = data.recipientId;
     const sender = await this.usersService.findOne(senderId);
@@ -97,6 +100,24 @@ export class CommunicationsService {
         'Recipient could not be determined for this message',
       );
 
+    let imageUrl: string | undefined;
+    let voiceUrl: string | undefined;
+
+    if (files && files.length > 0) {
+      for (const file of files) {
+        const uploadResult = await this.cloudinaryService.uploadFile(file);
+        if (file.mimetype.startsWith('image/')) {
+          imageUrl = uploadResult.secure_url;
+        } else if (
+          file.mimetype.startsWith('audio/') ||
+          file.mimetype === 'video/mp4' || // Some voice recorders save as mp4
+          file.mimetype === 'application/octet-stream' // Fallback
+        ) {
+          voiceUrl = uploadResult.secure_url;
+        }
+      }
+    }
+
     const complain = this.complainRepository.create({
       sender: { id: senderId } as any,
       recipient: { id: recipientId } as any,
@@ -104,6 +125,8 @@ export class CommunicationsService {
       student: studentProfileId ? ({ id: studentProfileId } as any) : null,
       content: data.content,
       type: data.type,
+      imageUrl,
+      voiceUrl,
     });
 
     return this.complainRepository.save(complain);
@@ -141,6 +164,8 @@ export class CommunicationsService {
           content: c.content,
           type: c.type,
           status: c.status,
+          imageUrl: c.imageUrl,
+          voiceUrl: c.voiceUrl,
           createdAt: c.createdAt,
           updatedAt: c.updatedAt,
         };
@@ -185,6 +210,8 @@ export class CommunicationsService {
         content: c.content,
         type: c.type,
         status: c.status,
+        imageUrl: c.imageUrl,
+        voiceUrl: c.voiceUrl,
         createdAt: c.createdAt,
         updatedAt: c.updatedAt,
       };

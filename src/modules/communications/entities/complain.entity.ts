@@ -34,4 +34,10 @@ export class Complain extends AbstractEntity {
 
   @Column({ default: 'PENDING' })
   status: string; // PENDING, RESOLVED
+
+  @Column({ nullable: true })
+  imageUrl: string;
+
+  @Column({ nullable: true })
+  voiceUrl: string;
 }
