@@ -18,6 +18,12 @@ export class Student extends AbstractEntity {
   @Column({ nullable: true })
   contactNumber: string;
 
+  @Column({ nullable: true })
+  session: string;
+
+  @Column({ nullable: true })
+  photoUrl: string;
+
   @ManyToOne(() => Class)
   @JoinColumn({ name: 'classId' })
   class: Class;
