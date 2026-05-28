@@ -169,6 +169,38 @@ export class TimetableService {
     return saved;
   }
 
+  async update(id: string, data: any): Promise<Timetable> {
+    const item = await this.timetableRepository.findOne({ where: { id } as any });
+    if (!item) throw new NotFoundException('Timetable entry not found');
+
+    if (data.classId) {
+      const classEntity = await this.classRepository.findOne({ where: { id: data.classId } as any });
+      if (classEntity) item.class = classEntity;
+    }
+    if (data.sectionId !== undefined) {
+      if (data.sectionId && data.sectionId !== 'null') {
+        const sectionEntity = await this.sectionRepository.findOne({ where: { id: data.sectionId } as any });
+        if (sectionEntity) item.section = sectionEntity;
+      } else {
+        item.section = null;
+      }
+    }
+    if (data.subjectId) {
+      const subjectEntity = await this.subjectRepository.findOne({ where: { id: data.subjectId } as any });
+      if (subjectEntity) item.subject = subjectEntity;
+    }
+    if (data.teacherId) {
+      const teacherEntity = await this.usersService.ensureTeacherProfile(data.teacherId);
+      if (teacherEntity) item.teacher = teacherEntity;
+    }
+    if (data.dayOfWeek) item.dayOfWeek = data.dayOfWeek as DayOfWeek;
+    if (data.startTime) item.startTime = data.startTime;
+    if (data.endTime) item.endTime = data.endTime;
+    if (data.room !== undefined) item.roomNumber = data.room || null;
+
+    return this.timetableRepository.save(item);
+  }
+
   async remove(id: string): Promise<void> {
     const result = await this.timetableRepository.delete(id);
     if (result.affected === 0)
