@@ -4,6 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Cron } from '@nestjs/schedule';
 import { Repository, Between } from 'typeorm';
 import {
   StudentAttendance,
@@ -658,5 +659,83 @@ export class AttendanceService {
         title: h.title,
       })),
     };
+  }
+
+  // ─── End-of-Month Low Attendance Notification ──────────────────────────────
+
+  private isLastDayOfMonth(date: Date): boolean {
+    const tomorrow = new Date(date);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.getDate() === 1;
+  }
+
+  private async getMonthlyAttendancePercentage(
+    studentId: string,
+    year: number,
+    month: number,
+  ): Promise<{ percentage: number; present: number; total: number }> {
+    const start = new Date(year, month, 1);
+    const end = new Date(year, month + 1, 0, 23, 59, 59);
+
+    const workingDays = await this.getWorkingDaysInRange(start, end);
+    const totalWorkingDays = workingDays.length;
+    if (totalWorkingDays === 0) return { percentage: 0, present: 0, total: 0 };
+
+    const records = await this.studentAttendanceRepository.find({
+      where: {
+        student: { id: studentId },
+        date: Between(start, end),
+      } as any,
+    });
+
+    const presentDays = records.filter(
+      (r) =>
+        r.status === AttendanceStatus.PRESENT ||
+        r.status === AttendanceStatus.LATE,
+    ).length;
+
+    return {
+      percentage: Math.round((presentDays / totalWorkingDays) * 100),
+      present: presentDays,
+      total: totalWorkingDays,
+    };
+  }
+
+  @Cron('59 23 28-31 * *')
+  async checkLowAttendanceEndOfMonth() {
+    const now = new Date();
+    if (!this.isLastDayOfMonth(now)) return;
+
+    const year = now.getFullYear();
+    const month = now.getMonth();
+
+    console.log(
+      `[AttendanceCron] Checking low attendance for ${year}-${month + 1}...`,
+    );
+
+    const students = await this.usersService.findAllStudentsWithParents();
+
+    for (const student of students) {
+      const { percentage } = await this.getMonthlyAttendancePercentage(
+        student.id,
+        year,
+        month,
+      );
+
+      if (percentage < 70 && student.parents && student.parents.length > 0) {
+        for (const parent of student.parents) {
+          await this.notificationsService.create({
+            recipientId: parent.id,
+            title: 'Low Attendance Alert',
+            message: `Your child ${student.username} has only ${percentage}% attendance this month (${month + 1}/${year}). Please ensure regular attendance.`,
+            type: 'ABSENT_ALERT' as any,
+          });
+        }
+      }
+    }
+
+    console.log(
+      `[AttendanceCron] Low attendance check complete. Checked ${students.length} students.`,
+    );
   }
 }

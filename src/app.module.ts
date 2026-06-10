@@ -7,6 +7,7 @@ import { ClassesModule } from './modules/classes/classes.module.js';
 import { APP_FILTER, APP_INTERCEPTOR, APP_GUARD } from '@nestjs/core';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter.js';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor.js';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
 import { NoticesModule } from './modules/notices/notices.module.js';
@@ -48,6 +49,7 @@ import { TransportModule } from './modules/transport/transport.module.js';
       },
       inject: [ConfigService],
     }),
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([
       {
         ttl: 60000,

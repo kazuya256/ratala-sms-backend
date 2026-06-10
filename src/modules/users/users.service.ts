@@ -177,6 +177,13 @@ export class UsersService {
     return users;
   }
 
+  async findAllStudentsWithParents(): Promise<User[]> {
+    return this.userRepository.find({
+      where: { role: UserRole.STUDENT } as any,
+      relations: ['parents'],
+    });
+  }
+
   async countByRole(role: UserRole): Promise<number> {
     return this.userRepository.count({ where: { role } as any });
   }
